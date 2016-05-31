@@ -6,6 +6,7 @@
 		_Texture_Frame_1 ("TextureFrame1", 2D) = "white" {}
 		_Texture_Frame_2 ("TextureFrame2", 2D) = "white" {}
         _Texture_Frame_3 ("TextureFrame3", 2D) = "white" {}
+        _Texture_Frame_4 ("TextureFrame4", 2D) = "white" {}
         _NumRefFrames ("NumRefFrames", Float) = 4.0
     }
    
@@ -21,6 +22,7 @@
 			uniform sampler2D _Texture_Frame_1;
 			uniform sampler2D _Texture_Frame_2;
             uniform sampler2D _Texture_Frame_3;
+            uniform sampler2D _Texture_Frame_4;
             uniform float _NumRefFrames;
 			varying vec2 texCoordinate0;
            
@@ -40,6 +42,7 @@
                 col += texture2D (_Texture_Frame_1, texCoordinate0);
 				col += texture2D (_Texture_Frame_2, texCoordinate0);
                 col += texture2D (_Texture_Frame_3, texCoordinate0);
+                col += texture2D (_Texture_Frame_4, texCoordinate0);
 				col /= _NumRefFrames;
 
 				gl_FragColor = vec4(col.rgb, 1.0);

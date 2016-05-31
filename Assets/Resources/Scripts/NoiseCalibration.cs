@@ -12,10 +12,12 @@ public class NoiseCalibration : MonoBehaviour
 	[SerializeField] Shader m_calcVariationShader;
 	[SerializeField] Shader m_unlitTextureShader;
 
+	[SerializeField] DrawHistogram m_drawHistogramRef;
+
 	private const Image.PIXEL_FORMAT m_PixelFormat = Image.PIXEL_FORMAT.RGBA8888;
 	private const int COLOR_DEPTH = 256;
 	private const int PROC_SUBTEX_SIZE = 64;
-	private const int NUM_REF_FRAMES = 4;
+	private const int NUM_REF_FRAMES = 5;
 
 	private enum NoiseCalibrationStep
 	{
@@ -31,20 +33,19 @@ public class NoiseCalibration : MonoBehaviour
 	private Material m_calcVarMat;
 	private Material m_unlitTexMat;
 
-	[SerializeField] Texture2D[] m_refFrames; // PROBLEM!!! ALL FRAMES ARE THE SAME
+	private Texture2D[] m_refFrames;
 	private RenderTexture[] m_varFrames;
 	private RenderTexture m_avgFrame;
 
+	private int m_refFrameCounter;
 	private bool m_secureCoroutine = true;
 	private int[,] m_histogram;
 
-	[SerializeField] RenderTexture DEBUG_TEX_1;
-	[SerializeField] RenderTexture DEBUG_TEX_2;
+	//private Texture2D DEBUG_TEX_0;
 	
 	void Start () 
 	{
-		DEBUG_TEX_1 = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.Default);
-		DEBUG_TEX_2 = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.Default);
+		//DEBUG_TEX_0 = new Texture2D(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, TextureFormat.RGB24, false);
 
 		m_calcAvgMat = new Material(m_noiseCalibrationShader);
 		m_calcVarMat = new Material(m_calcVariationShader);
@@ -55,11 +56,12 @@ public class NoiseCalibration : MonoBehaviour
 
 		for (int i = 0; i < NUM_REF_FRAMES; i++) {
 			m_refFrames[i] = new Texture2D(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, TextureFormat.RGB24, false);
-			m_varFrames[i] = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.Default);
+			m_varFrames[i] = new RenderTexture(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 		}
-		m_avgFrame = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.Default);
+		m_avgFrame = new RenderTexture (PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 		m_histogram = new int[3, 512];
 
+		m_refFrameCounter = 0;
 		m_currentStep = NoiseCalibrationStep.CALIBRATION_WAIT;
 		m_prevStep = NoiseCalibrationStep.CONSTR_HISTOGRAM;
 		StartCoroutine (WaitForCalibration());
@@ -70,16 +72,14 @@ public class NoiseCalibration : MonoBehaviour
 		// Config steps
 		switch (m_currentStep) {
 		case NoiseCalibrationStep.CALIBRATION_WAIT: return;
-		case NoiseCalibrationStep.REF_IMG_GRAB: 
-			if (m_secureCoroutine) StartCoroutine (GrabReferenceFrames ());return;
+		case NoiseCalibrationStep.REF_IMG_GRAB: GrabReferenceFrames(); return;
 		case NoiseCalibrationStep.CONSTR_HISTOGRAM: CalculateHistogram (); return;
 		case NoiseCalibrationStep.CALIBRATION_FINISHED: break;
 		default: return;
 		}
 
+		// Draw debug textures over Vuforia camera image
 		StartCoroutine (FinalRender ());
-//		Graphics.Blit (m_avgFrame, DEBUG_TEX_1, m_unlitTexMat);
-//		Graphics.Blit (m_varFrames[0], DEBUG_TEX_2, m_unlitTexMat);
 	}
 
 	private void CalculateHistogram()
@@ -91,6 +91,7 @@ public class NoiseCalibration : MonoBehaviour
 		m_calcAvgMat.SetTexture("_Texture_Frame_1", m_refFrames[1]);
 		m_calcAvgMat.SetTexture("_Texture_Frame_2", m_refFrames[2]);
 		m_calcAvgMat.SetTexture("_Texture_Frame_3", m_refFrames[3]);
+		m_calcAvgMat.SetTexture("_Texture_Frame_4", m_refFrames[4]);
 		m_calcAvgMat.SetFloat("_NumRefFrames", NUM_REF_FRAMES);
 		Graphics.Blit(null, m_avgFrame, m_calcAvgMat);
 
@@ -101,34 +102,28 @@ public class NoiseCalibration : MonoBehaviour
 			Graphics.Blit (null, m_varFrames[i], m_calcVarMat);
 		}
 
-		// Create subtextures
-//		Texture2D[] texData = new Texture2D[NUM_REF_FRAMES];
-//		for (int i = 0; i < NUM_REF_FRAMES; i++)
-//		{
-//			texData[i] = new Texture2D (PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, TextureFormat.RGB24, false);
-//			RenderTexture.active = m_varFrames[i];
-//			texData[i].ReadPixels( new Rect(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 
-//				Screen.width/2 - PROC_SUBTEX_SIZE/2, 
-//				Screen.height/2 - PROC_SUBTEX_SIZE/2), 0, 0);
-//			texData[i].Apply();
-//			RenderTexture.active = null;
-//		}
-
 		// Generate Histogram
 		for (int i = 0; i < NUM_REF_FRAMES; i++) 
 		{
-			byte[] tex = m_refFrames[i].GetRawTextureData();
-			for (int j = 0; j < tex.Length/3; j++) 
+			Texture2D tex = new Texture2D (PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, TextureFormat.RGB24, false);
+			RenderTexture.active = m_varFrames[i];
+			tex.ReadPixels(new Rect(0, 0, PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE), 0, 0);
+			tex.Apply ();
+			byte[] bytes = tex.GetRawTextureData();
+
+			for (int j = 0; j < bytes.Length; j+=3) 
 			{
-				m_histogram [0, Convert.ToInt32(tex[j*3]) + COLOR_DEPTH]++;
-				m_histogram [1, Convert.ToInt32(tex[j*3+1]) + COLOR_DEPTH]++;
-				m_histogram [2, Convert.ToInt32(tex[j*3+2]) + COLOR_DEPTH]++;
+				m_histogram [0, Convert.ToInt32(bytes[j])]++;
+				m_histogram [1, Convert.ToInt32(bytes[j+1])]++;
+				m_histogram [2, Convert.ToInt32(bytes[j+2])]++;
 			}
+			RenderTexture.active = null;
 		}
 
 		// Finished
 		m_currentStep = NoiseCalibrationStep.CALIBRATION_FINISHED;
-		StartCoroutine (PrintHistogram ());
+		//m_drawHistogramRef.PassHistogramData(m_histogram);
+		//StartCoroutine (PrintHistogram ());
 	}
 
 	private void PrintStep()
@@ -139,39 +134,47 @@ public class NoiseCalibration : MonoBehaviour
 		}
 	}
 
-	private IEnumerator GrabReferenceFrames()
+	private void GrabReferenceFrames()
 	{
-		m_secureCoroutine = false;
-		Debug.Log("Grabbing...");
- 		for (int i = 0; i < NUM_REF_FRAMES; i++) 
-		{
-			m_refFrames[i].ReadPixels(new Rect(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 
-				Screen.width/2 - PROC_SUBTEX_SIZE/2,
-				Screen.height/2 - PROC_SUBTEX_SIZE/2), 0, 0);
-			m_refFrames[i].Apply();
-			yield return null;
-		}
-		m_currentStep = NoiseCalibrationStep.CONSTR_HISTOGRAM;
-		Debug.Log("...Done!");
+		RenderTexture.active = null;
+		m_refFrames[m_refFrameCounter].ReadPixels(new Rect(
+			Screen.width/2 - PROC_SUBTEX_SIZE/2,
+			Screen.height/2 - PROC_SUBTEX_SIZE/2, 
+			PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE), 0, 0);
+		m_refFrames[m_refFrameCounter].Apply();
+
+		++m_refFrameCounter;
+		m_refFrameCounter %= NUM_REF_FRAMES;
+
+		if (m_refFrameCounter <= 0)
+			m_currentStep = NoiseCalibrationStep.CONSTR_HISTOGRAM;
 	}
 
 	private IEnumerator PrintHistogram()
 	{
-		yield return new WaitForSeconds(1.0f);
+		yield return new WaitForSeconds(0.1f);
 		Debug.Log ("HISTOGRAM OUTPUT:");
-		for (int j = 0; j < COLOR_DEPTH*2; j++) 
-			Debug.Log(j + " " + " R: " + m_histogram [0, j] + " G: " + m_histogram [1, j] + " B: " + m_histogram [2, j]);
+		for (int j = 0; j <= m_histogram.GetUpperBound(1); j++) 
+			Debug.Log(j + ": [" + m_histogram [0, j] + ", " + m_histogram [1, j] + ", " + m_histogram [2, j] + "];");
 	}
 
 	private IEnumerator WaitForCalibration()
 	{
-		yield return new WaitForSeconds(3.0f);
+		yield return new WaitForSeconds(2.0f);
 		m_currentStep = NoiseCalibrationStep.REF_IMG_GRAB;
 	}
 
 	private IEnumerator FinalRender()
 	{
 		yield return new WaitForEndOfFrame();
-		Graphics.DrawTexture(new Rect(0, 0, PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE), m_varFrames[1]);
+
+		int SIZE = Convert.ToInt32(PROC_SUBTEX_SIZE * 1.0f);
+		Graphics.DrawTexture(new Rect(0, 0, SIZE, SIZE), m_avgFrame);
+		for (int i = 0; i < NUM_REF_FRAMES; i++) 
+		{
+			Graphics.DrawTexture(new Rect(SIZE * i, SIZE, SIZE, SIZE), m_refFrames [i]);
+			Graphics.DrawTexture(new Rect(SIZE * i, SIZE * 2, SIZE, SIZE), m_varFrames[i]);
+		}
+		//Graphics.DrawTexture(new Rect(0, SIZE*3, SIZE, SIZE), DEBUG_TEX_0);
 	}
 }
