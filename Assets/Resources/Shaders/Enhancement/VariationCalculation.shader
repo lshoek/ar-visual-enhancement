@@ -17,7 +17,7 @@
 			uniform sampler2D _Texture_Ref_Frame;
 			uniform sampler2D _Texture_Avg_Frame;
 			varying vec2 texCoordinate0;
-            const float MUL_NOISE = 1.0;
+            const float MUL_NOISE = 3.0;
            
             #ifdef VERTEX
             void main()
