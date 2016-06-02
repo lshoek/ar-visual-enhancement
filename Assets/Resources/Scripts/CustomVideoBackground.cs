@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System;
 
 [RequireComponent (typeof(Camera), typeof(NoiseDistribution))]
 public class CustomVideoBackground : MonoBehaviour 
@@ -7,8 +8,21 @@ public class CustomVideoBackground : MonoBehaviour
 	[SerializeField] Camera m_FXCamera;
 	[SerializeField] GameObject m_renderTarget;
 
+	private const int NUM_NOISE_DELAY_FRAMES = 7;
+
+	private int m_noiseTexSize;
+	private int m_noiseDelayCounter;
+	private bool m_noiseTexGenerated;
+
+	private System.Random m_rng; 
+
 	private void Start() 
 	{
+		m_noiseTexSize = 64;
+		m_noiseDelayCounter = 0;
+		m_noiseTexGenerated = false;
+		m_rng = new System.Random ();
+
 		Shader.DisableKeyword ("IOSBUILD_OFF");
 		Shader.DisableKeyword ("IOSBUILD_IPADAIR1");
 		Shader.DisableKeyword ("IOSBUILD_IPADAIR2");
@@ -41,26 +55,30 @@ public class CustomVideoBackground : MonoBehaviour
 
 	private void OnPreRender() 
 	{
-		m_renderTarget.GetComponent<Renderer> ().material.SetTexture (
-			"_ObjectTex", m_FXCamera.GetComponent<GrabModelTexture> ().GetModelTexture ());
-			
-		m_renderTarget.GetComponent<Renderer> ().material.SetTexture (
-			"_NoiseTex", GetComponent<NoiseDistribution> ().GetNoiseTexture());
+		Material m = m_renderTarget.GetComponent<Renderer>().material;
 
-		m_renderTarget.GetComponent<Renderer> ().material.SetFloat (
-			"_NoiseTexSize", GetComponent<NoiseDistribution> ().GetNoiseTexture().width);
+		if (!m_noiseTexGenerated) {
+			m_noiseTexGenerated = (GetComponent<NoiseDistribution> ().GetNoiseTexture() != null) ? true : false;
+			m.SetTexture ("_NoiseTex", (m_noiseTexGenerated) ?
+				GetComponent<NoiseDistribution> ().GetNoiseTexture() : new Texture2D(64, 64));
+			m_noiseTexSize = (m_noiseTexGenerated) ? 
+				GetComponent<NoiseDistribution> ().GetNoiseTexture ().width : m_noiseTexSize;
+		}
 
-		m_renderTarget.GetComponent<Renderer> ().material.SetFloat (
-			"_ScreenRes_Width", Screen.width);
+		++m_noiseDelayCounter;
+		if (m_noiseDelayCounter >= NUM_NOISE_DELAY_FRAMES) {
+			m.SetFloat ("_NoiseTexOffset0", Convert.ToSingle (m_rng.Next (m_noiseTexSize)) / m_noiseTexSize);
+			m.SetFloat ("_NoiseTexOffset1", Convert.ToSingle (m_rng.Next (m_noiseTexSize)) / m_noiseTexSize);
+		}
 
-		m_renderTarget.GetComponent<Renderer> ().material.SetFloat (
-			"_ScreenRes_Height", Screen.height);
+		m.SetFloat("_NoiseTexSize", m_noiseTexSize);
+		m.SetTexture("_ObjectTex", m_FXCamera.GetComponent<GrabModelTexture> ().GetModelTexture ());
+		m.SetFloat("_ScreenRes_Width", Screen.width);
+		m.SetFloat("_ScreenRes_Height", Screen.height);
+		m.SetFloat("_AspectRatio", Camera.main.aspect);
+		m.SetFloat("_Vuforia_Aspect", m_renderTarget.transform.localScale.x/m_renderTarget.transform.localScale.z);
 
-		m_renderTarget.GetComponent<Renderer> ().material.SetFloat (
-			"_AspectRatio", Camera.main.aspect);
-
-		m_renderTarget.GetComponent<Renderer> ().material.SetFloat (
-			"_Vuforia_Aspect", m_renderTarget.transform.localScale.x/m_renderTarget.transform.localScale.z);
+		m_noiseDelayCounter %= NUM_NOISE_DELAY_FRAMES;
 
 		/*** TEST CODE BEGIN
 		Vector2 scale = new Vector2 (1.0f, 1.0f);

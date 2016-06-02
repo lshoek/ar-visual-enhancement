@@ -6,6 +6,9 @@
         _ObjectTex ("ObjectTexture", 2D) = "white" {}
         _NoiseTex ("NoiseTexture", 2D) = "gray" {}
 
+        _NoiseTexOffset0 ("NoiseTextureOffset0", Float) = 0
+        _NoiseTexOffset1 ("NoiseTextureOffset1", Float) = 0
+        
         _NoiseTexSize ("NoiseTextureSize", Float) = 64.0
         _ScreenRes_Width ("ScreenResWidth", Float) = 640.0
         _ScreenRes_Height ("ScreenResHeight", Float) = 480.0
@@ -50,6 +53,8 @@
 			uniform sampler2D _NoiseTex;
 
 			uniform float4 _NoiseTex_ST;
+			uniform float _NoiseTexOffset0;
+			uniform float _NoiseTexOffset1;
 			uniform float _NoiseTexSize;
 			uniform float _ScreenRes_Width;
 			uniform float _ScreenRes_Height;
@@ -83,7 +88,9 @@
 				o.pos = mul (UNITY_MATRIX_MVP, v.vertex);
 				o.uv = v.texcoord;
 
-				_NoiseTex_ST = float4(_ScreenRes_Width/_NoiseTexSize, _ScreenRes_Height/_NoiseTexSize, 0.0, 0.0);
+				_NoiseTex_ST = float4(
+					_ScreenRes_Width/_NoiseTexSize, _ScreenRes_Height/_NoiseTexSize,
+					_NoiseTexOffset0, _NoiseTexOffset1);
 				o.uv2 = TRANSFORM_TEX(v.texcoord, _NoiseTex);
 				return o;
 			}

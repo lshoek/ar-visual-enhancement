@@ -16,10 +16,9 @@ public class NoiseDistribution : MonoBehaviour
 	[SerializeField] DrawHistogram m_drawHistogramRef;
 	
 	private const int COLOR_DEPTH = 256;
-	private const int NOISE_TEX_SIZE = 64;
-	private const int PROC_SUBTEX_SIZE = 64;
+	private const int NOISE_TEX_SIZE = 128;
+	private const int PROC_SUBTEX_SIZE = 128;
 	private const int NUM_REF_FRAMES = 5;
-	private const int NUM_NOISE_TEXTURES = 3;
 	private const int NUM_NOISE_DELAY_FRAMES = 8;
 
 	private enum NoiseDistributionStep
@@ -38,13 +37,11 @@ public class NoiseDistribution : MonoBehaviour
 	private Material m_genNoiseTexMat;
 	private Material m_unlitTexMat;
 
-	private Texture2D[] m_noiseTextures;
 	private Texture2D[] m_refFrames;
 	private RenderTexture[] m_varFrames;
 	private RenderTexture m_avgFrame;
+	private Texture2D m_noiseTexture;
 
-	private int m_noiseDelayCounter;
-	private int m_noiseIndex;
 	private int m_refFrameCounter;
 	private bool m_secureCoroutine = true;
 	private int[,] m_histogram;
@@ -61,7 +58,6 @@ public class NoiseDistribution : MonoBehaviour
 		m_genNoiseTexMat = new Material(m_generateNoiseTexShader);
 		m_unlitTexMat = new Material(m_unlitTextureShader);
 
-		m_noiseTextures = new Texture2D[NUM_NOISE_TEXTURES];
 		m_refFrames = new Texture2D[NUM_REF_FRAMES];
 		m_varFrames = new RenderTexture[NUM_REF_FRAMES];
 
@@ -69,14 +65,10 @@ public class NoiseDistribution : MonoBehaviour
 			m_refFrames[i] = new Texture2D(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, TextureFormat.RGB24, false);
 			m_varFrames[i] = new RenderTexture(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 		}
-		for (int i = 0; i < NUM_NOISE_TEXTURES; i++)
-			m_noiseTextures[i] = new Texture2D (NOISE_TEX_SIZE, NOISE_TEX_SIZE, TextureFormat.RGB24, false);
-		
+		m_noiseTexture = new Texture2D(NOISE_TEX_SIZE, NOISE_TEX_SIZE, TextureFormat.RGB24, false);
 		m_avgFrame = new RenderTexture (PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 		m_histogram = new int[3, COLOR_DEPTH*2];
 
-		m_noiseDelayCounter = 0;
-		m_noiseIndex = 0;
 		m_refFrameCounter = 0;
 		m_currentStep = NoiseDistributionStep.PROCESSING_WAIT;
 		m_prevStep = NoiseDistributionStep.CALC_NOISE_DISTRIB;
@@ -170,7 +162,7 @@ public class NoiseDistribution : MonoBehaviour
 	{
 		//GenNoiseTextureGPU();
 		byte GRAY = 127;
-		byte[] bytes = m_noiseTextures[m_noiseIndex].GetRawTextureData();
+		byte[] bytes = m_noiseTexture.GetRawTextureData();
 		System.Random rnd = new System.Random ();
 
 		for (int y = 0; y < NOISE_TEX_SIZE; y++) {
@@ -191,14 +183,9 @@ public class NoiseDistribution : MonoBehaviour
 				}
 			}
 		}
-		m_noiseTextures[m_noiseIndex].LoadRawTextureData (bytes);
-		m_noiseTextures[m_noiseIndex].Apply ();
-
-		++m_noiseIndex;
-		if (m_noiseIndex >= NUM_NOISE_TEXTURES) {
-			m_currentStep = NoiseDistributionStep.PROCESS_FINISHED;
-			m_noiseIndex = 0;
-		}
+		m_noiseTexture.LoadRawTextureData (bytes);
+		m_noiseTexture.Apply ();
+		m_currentStep = NoiseDistributionStep.PROCESS_FINISHED;
 	}
 
 	// Not used for the time being
@@ -241,16 +228,9 @@ public class NoiseDistribution : MonoBehaviour
 	public Texture2D GetNoiseTexture()
 	{
 		if (m_currentStep != NoiseDistributionStep.PROCESS_FINISHED)
-			return new Texture2D (NOISE_TEX_SIZE, NOISE_TEX_SIZE);
+			return null; //new Texture2D (NOISE_TEX_SIZE, NOISE_TEX_SIZE);
 
-		// Delay noise texture change by NUM_NOISE_DELAY_FRAMES frames
-		++m_noiseDelayCounter;
-		if (m_noiseDelayCounter >= NUM_NOISE_DELAY_FRAMES)
-			++m_noiseIndex;
-		
-		m_noiseDelayCounter %= NUM_NOISE_DELAY_FRAMES;
-		m_noiseIndex %= NUM_NOISE_TEXTURES;
-		return m_noiseTextures[m_noiseIndex];
+		return m_noiseTexture;
 	}
 
 	#region DEBUG FUNCTIONS
@@ -293,7 +273,7 @@ public class NoiseDistribution : MonoBehaviour
 			Graphics.DrawTexture(new Rect(SIZE * i, SIZE, SIZE, SIZE), m_refFrames [i]);
 			Graphics.DrawTexture(new Rect(SIZE * i, SIZE * 2, SIZE, SIZE), m_varFrames[i]);
 		}
-		Graphics.DrawTexture(new Rect(10.0f, SIZE*3+10.0f, SIZE*3.5f, SIZE*3.5f), m_noiseTextures[m_noiseIndex]);
+		Graphics.DrawTexture(new Rect(10.0f, SIZE*3+10.0f, SIZE*3.5f, SIZE*3.5f), m_noiseTexture);
 	}
 	#endregion
 }
