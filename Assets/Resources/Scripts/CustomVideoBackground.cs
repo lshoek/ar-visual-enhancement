@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Vuforia;
 using System.Collections;
 using System;
 
@@ -8,7 +9,7 @@ public class CustomVideoBackground : MonoBehaviour
 	[SerializeField] Camera m_FXCamera;
 	[SerializeField] GameObject m_renderTarget;
 
-	private const int NUM_NOISE_DELAY_FRAMES = 7;
+	private const int NUM_NOISE_DELAY_FRAMES = 5;
 
 	private int m_noiseTexSize;
 	private int m_noiseDelayCounter;
@@ -64,6 +65,7 @@ public class CustomVideoBackground : MonoBehaviour
 			m_noiseTexSize = (m_noiseTexGenerated) ? 
 				GetComponent<NoiseDistribution> ().GetNoiseTexture ().width : m_noiseTexSize;
 		}
+		m.SetFloat("_NoiseTexSize", m_noiseTexSize);
 
 		++m_noiseDelayCounter;
 		if (m_noiseDelayCounter >= NUM_NOISE_DELAY_FRAMES) {
@@ -71,8 +73,8 @@ public class CustomVideoBackground : MonoBehaviour
 			m.SetFloat ("_NoiseTexOffset1", Convert.ToSingle (m_rng.Next (m_noiseTexSize)) / m_noiseTexSize);
 		}
 
-		m.SetFloat("_NoiseTexSize", m_noiseTexSize);
 		m.SetTexture("_ObjectTex", m_FXCamera.GetComponent<GrabModelTexture> ().GetModelTexture ());
+
 		m.SetFloat("_ScreenRes_Width", Screen.width);
 		m.SetFloat("_ScreenRes_Height", Screen.height);
 		m.SetFloat("_AspectRatio", Camera.main.aspect);

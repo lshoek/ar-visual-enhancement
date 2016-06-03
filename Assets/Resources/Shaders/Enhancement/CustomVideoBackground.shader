@@ -6,19 +6,23 @@
         _ObjectTex ("ObjectTexture", 2D) = "white" {}
         _NoiseTex ("NoiseTexture", 2D) = "gray" {}
 
-        _NoiseTexOffset0 ("NoiseTextureOffset0", Float) = 0
-        _NoiseTexOffset1 ("NoiseTextureOffset1", Float) = 0
-        
-        _NoiseTexSize ("NoiseTextureSize", Float) = 64.0
-        _ScreenRes_Width ("ScreenResWidth", Float) = 640.0
-        _ScreenRes_Height ("ScreenResHeight", Float) = 480.0
-        _AspectRatio ("AspectRatio", Float) = 1.0
-        _Vuforia_Aspect ("VuforiaAspect", Float) = 1.0
-        //_TexScale ("TexScale", Vector) = (1.0, 1.0, 1.0, 1.0)
+        [HideInInspector] _NoiseTexOffset0 ("NoiseTextureOffset0", Float) = 0
+        [HideInInspector] _NoiseTexOffset1 ("NoiseTextureOffset1", Float) = 0
 
-        [Toggle] _EnableNoise ("EnableNoise", Float) = 0
-        _TweakNoise ("TweakNoise", Range(0, 10)) = 1.0
-        [Toggle] _DisableAlphaMixing ("DisableAlphaMixing", Float) = 0
+        [HideInInspector] _NoiseTexSize ("NoiseTextureSize", Float) = 64.0
+        [HideInInspector] _ScreenRes_Width ("ScreenResWidth", Float) = 640.0
+        [HideInInspector] _ScreenRes_Height ("ScreenResHeight", Float) = 480.0
+        [HideInInspector] _AspectRatio ("AspectRatio", Float) = 1.0
+        [HideInInspector] _Vuforia_Aspect ("VuforiaAspect", Float) = 1.0
+        //[HideInInspector] _TexScale ("TexScale", Vector) = (1.0, 1.0, 1.0, 1.0)
+
+        [Toggle] _EnableNoise ("Enable Noise", Float) = 1
+        [Toggle] _EnableEdgeAntiAliasing ("Enable Edge Antialiasing", Float) = 1
+        [Toggle] _EnableAlphaMixing ("Enable Alpha Mixing", Float) = 1 // for translucent surfaces
+        _MultiplyNoise ("Multiply Noise", Range(0, 100)) = 10.0
+        _IntensityBias ("Intensity Bias", Range(0, 1)) = 0.5
+        _TexelMagnification ("Texel Magnification", Range(0, 16)) = 1.0
+        _AA_Plus ("Increase AA Weight", Range(0, 1.0)) = 0
     }
     
     SubShader 
@@ -48,6 +52,10 @@
 			#define UPSCALE_IPADAIR2_TEX_X(x) (x * IPADAIR2_TEXSCALE_X)
 			#define UPSCALE_IPADAIR2_TEX_Y(y) (y * IPADAIR2_TEXSCALE_Y)
 
+			#define E _EnableEdgeAntiAliasing
+			#define W _ScreenRes_Width
+			#define H _ScreenRes_Height
+
 			uniform sampler2D _MainTex;
 			uniform sampler2D _ObjectTex;
 			uniform sampler2D _NoiseTex;
@@ -63,16 +71,19 @@
 
 			// Debug
 			uniform float _EnableNoise;
-			uniform float _TweakNoise;
-			uniform float _DisableAlphaMixing;
-
+			uniform float _MultiplyNoise;
+			uniform float _IntensityBias;
+			uniform float _TexelMagnification;
+			uniform float _EnableEdgeAntiAliasing;
+			uniform float _EnableAlphaMixing;
+			uniform float _AA_Plus;
 			// uniform float4 _TexScale;
 
 			struct v2f
 			{
 				float4 pos : SV_POSITION;
-				half2 uv : TEXCOORD0;
-				half2 uv2 : TEXCOORD2;
+				half2 uv0 : TEXCOORD0;
+				half2 uv1 : TEXCOORD1;
 			};
 
 			float aspectfix(float uvx) 
@@ -86,42 +97,50 @@
 			{
 				v2f o;
 				o.pos = mul (UNITY_MATRIX_MVP, v.vertex);
-				o.uv = v.texcoord;
+				o.uv0 = v.texcoord;
 
 				_NoiseTex_ST = float4(
-					_ScreenRes_Width/_NoiseTexSize, _ScreenRes_Height/_NoiseTexSize,
+					(W*_AspectRatio/_NoiseTexSize)/_TexelMagnification, 
+					(H/_NoiseTexSize)/_TexelMagnification,
 					_NoiseTexOffset0, _NoiseTexOffset1);
-				o.uv2 = TRANSFORM_TEX(v.texcoord, _NoiseTex);
+				o.uv1 = TRANSFORM_TEX(v.texcoord, _NoiseTex);
 				return o;
 			}
 
 			fixed4 FRAG (v2f i) : COLOR
 			{
-				fixed4 vidcol = tex2D(_MainTex, i.uv);
-				fixed4 noisecol = tex2D(_NoiseTex, i.uv2);
+				fixed4 vidcol = tex2D(_MainTex, i.uv0);
+				fixed4 noisecol = tex2D(_NoiseTex, i.uv1);
 
 				#if IOSBUILD_IPADAIR1
-				i.uv.x = UPSCALE_IPADAIR1_TEX_X(i.uv.x);
-				i.uv.y = UPSCALE_IPADAIR1_TEX_Y(i.uv.y);
+				i.uv0.x = UPSCALE_IPADAIR1_TEX_X(i.uv0.x);
+				i.uv0.y = UPSCALE_IPADAIR1_TEX_Y(i.uv0.y);
 				#endif
 
 				#if IOSBUILD_IPADAIR2
-				i.uv.x = UPSCALE_IPADAIR2_TEX_X(i.uv.x);
-				i.uv.y = UPSCALE_IPADAIR2_TEX_Y(i.uv.y);
+				i.uv0.x = UPSCALE_IPADAIR2_TEX_X(i.uv0.x);
+				i.uv0.y = UPSCALE_IPADAIR2_TEX_Y(i.uv0.y);
 				#endif
 
 				// i.uv.x *= _TexScale.x;
 				// i.uv.y *= _TexScale.y;
 
-				fixed4 objcol = tex2D(_ObjectTex, float2(aspectfix(i.uv.x), 1.0 - i.uv.y));
-				fixed intensity = clamp(((objcol.r + objcol.g + objcol.b)/3), 0, 1.0);
+				fixed4 objcol = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y));
+				fixed intensity = lerp(_IntensityBias, 1.0, (objcol.r + objcol.g + objcol.b)/3);
 
-				objcol.a = round(objcol.a) * _DisableAlphaMixing + objcol.a * (1.0 - _DisableAlphaMixing);
+				objcol.a = round(objcol.a) * (1.0-_EnableAlphaMixing) + objcol.a * _EnableAlphaMixing;
 				noisecol = (noisecol - fixed4(0.5)) * (1.0 - intensity);
-				objcol.rgb = objcol.rgb + noisecol.rgb * objcol.a * _TweakNoise * _EnableNoise;
-				
-				fixed3 fcol = fixed3(lerp(vidcol.rgb, objcol.rgb, objcol.a));
-				return fixed4(fcol.rgb, 1.0);
+				objcol.rgb = objcol.rgb + noisecol.rgb * objcol.a * _MultiplyNoise * _EnableNoise;
+
+				// SIMPLE EDGE BLUR (4 texture fetches)
+				fixed p12 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(0, -1.0/H)).a;		
+				fixed p21 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(-1.0/W, 0)).a;
+				fixed p23 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(1.0/W, 0)).a;		
+				fixed p32 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(0, 1.0/H)).a;
+				fixed weight = (((p12 + p21 + p23 + p32)/4) * objcol.a + _AA_Plus) * E + objcol.a * (1.0-E);
+
+				fixed3 rescol = fixed3(lerp(vidcol.rgb, objcol.rgb, weight));
+				return fixed4(rescol.rgb, 1.0);
 			}
 			ENDCG
         }

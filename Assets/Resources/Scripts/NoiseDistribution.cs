@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using Vuforia;
 using System.Collections;
 using System;
 using System.IO;
@@ -19,7 +18,6 @@ public class NoiseDistribution : MonoBehaviour
 	private const int NOISE_TEX_SIZE = 128;
 	private const int PROC_SUBTEX_SIZE = 128;
 	private const int NUM_REF_FRAMES = 5;
-	private const int NUM_NOISE_DELAY_FRAMES = 8;
 
 	private enum NoiseDistributionStep
 	{
@@ -66,6 +64,8 @@ public class NoiseDistribution : MonoBehaviour
 			m_varFrames[i] = new RenderTexture(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 		}
 		m_noiseTexture = new Texture2D(NOISE_TEX_SIZE, NOISE_TEX_SIZE, TextureFormat.RGB24, false);
+		m_noiseTexture.filterMode = FilterMode.Point;
+
 		m_avgFrame = new RenderTexture (PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 		m_histogram = new int[3, COLOR_DEPTH*2];
 
