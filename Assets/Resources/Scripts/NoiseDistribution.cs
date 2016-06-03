@@ -46,11 +46,9 @@ public class NoiseDistribution : MonoBehaviour
 
 	private double[] means = new double[3];
 	private double[] sdeviations = new double[3];
-	//private Texture2D DEBUG_TEX_0;
 	
 	void Start () 
 	{
-		//DEBUG_TEX_0 = new Texture2D(NOISE_TEX_SIZE, NOISE_TEX_SIZE, TextureFormat.RGB24, false);
 		m_calcAvgMat = new Material(m_calcAverageShader);
 		m_calcVarMat = new Material(m_calcVariationShader);
 		m_genNoiseTexMat = new Material(m_generateNoiseTexShader);
@@ -124,8 +122,6 @@ public class NoiseDistribution : MonoBehaviour
 			}
 			RenderTexture.active = null;
 		}
-		//m_drawHistogramRef.PassHistogramData(m_histogram);
-		//StartCoroutine (PrintHistogram ());
 
 		// Calculate noise distribution parameters
 		int numPixels = PROC_SUBTEX_SIZE*PROC_SUBTEX_SIZE*NUM_REF_FRAMES;
@@ -198,7 +194,6 @@ public class NoiseDistribution : MonoBehaviour
 		m_genNoiseTexMat.SetFloat("_SD_R", Convert.ToSingle(sdeviations[0]));
 		m_genNoiseTexMat.SetFloat("_SD_G", Convert.ToSingle(sdeviations[1]));
 		m_genNoiseTexMat.SetFloat("_SD_B", Convert.ToSingle(sdeviations[2]));
-		//Graphics.Blit(m_noiseTextures[m_noiseIndex], DEBUG_TEX_0, m_genNoiseTexMat);
 	}
 
 	private double GetRandomNoiseValue(System.Random rand, double mean, double sdev)
@@ -262,6 +257,7 @@ public class NoiseDistribution : MonoBehaviour
 		m_currentStep = NoiseDistributionStep.REF_IMG_GRAB;
 	}
 
+	// Show collected reference images and whatnot
 	private IEnumerator FinalRender()
 	{
 		yield return new WaitForEndOfFrame();
