@@ -8,11 +8,19 @@ using Vuforia;
 public class GrabModelTexture : MonoBehaviour 
 {
 	[SerializeField] Shader m_customShader;
-	[SerializeField] RenderTexture m_modelTexture;
+	[SerializeField] GameObject m_modelReference;
 
-	[SerializeField][Range(0, 1.0f)] float m_AA_Weight = 1.0f;
 	[SerializeField] bool m_enableEdgeAA = true;
+	[SerializeField] bool m_enableMotionBlur = true;
 
+	[SerializeField] [Range(0, 1.0f)] float m_AAWeight = 1.0f;
+
+	const int MOTIONBLUR_SIZE = 4; // Has to be the same as defined in SimpleEdgeBlur shader
+
+	private Vector3 m_currBlurPos;
+	private Vector3 m_prevBlurPos;
+
+	private RenderTexture m_modelTexture;
 	private Material m_customMat;
 	private int m_camResWidth;
 	private int m_camResHeight;
@@ -22,6 +30,8 @@ public class GrabModelTexture : MonoBehaviour
 		StartCoroutine (WaitForVuforiaCamData ());
 		m_camResWidth = 640;
 		m_camResHeight = 640;
+		m_currBlurPos = new Vector3(1.0f, 0, 0);
+		m_prevBlurPos = new Vector3(0, 1.0f, 0);
 		m_customMat = new Material (m_customShader);
 		m_modelTexture = new RenderTexture (640, 640, 24, RenderTextureFormat.ARGB32);
 		GetComponent<Camera> ().targetTexture = m_modelTexture;
@@ -29,10 +39,19 @@ public class GrabModelTexture : MonoBehaviour
 
 	private void OnPostRender() 
 	{
+		m_prevBlurPos = m_currBlurPos;
+		m_currBlurPos = 
+			GetComponent<Camera> ().WorldToScreenPoint(m_modelReference.transform.position);
+		m_currBlurPos.x /= Screen.width;
+		m_currBlurPos.y /= Screen.height;
+		Debug.Log (m_currBlurPos);
+
+		m_customMat.SetVector ("_MotionBlurVec", m_currBlurPos - m_prevBlurPos);
 		m_customMat.SetFloat ("_CamRes_Width", m_camResWidth);
 		m_customMat.SetFloat ("_CamRes_Height", m_camResHeight);
+		m_customMat.SetFloat ("_EnableMotionBlur", (m_enableMotionBlur) ? 1.0f : 0);
 		m_customMat.SetFloat ("_EnableEdgeAntiAliasing", (m_enableEdgeAA) ? 1.0f : 0);
-		m_customMat.SetFloat ("_AA_Weight", m_AA_Weight);
+		m_customMat.SetFloat ("_AAWeight", m_AAWeight);
 		Graphics.Blit (GetComponent<Camera>().targetTexture, m_modelTexture, m_customMat);
 	}
 
