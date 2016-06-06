@@ -17,12 +17,10 @@
         //[HideInInspector] _TexScale ("TexScale", Vector) = (1.0, 1.0, 1.0, 1.0)
 
         [Toggle] _EnableNoise ("Enable Noise", Float) = 1.0
-        [Toggle] _EnableEdgeAntiAliasing ("Enable Edge Antialiasing", Float) = 1.0
         [Toggle] _EnableAlphaMixing ("Enable Alpha Mixing", Float) = 1.0 // for translucent surfaces
         _MultiplyNoise ("Multiply Noise", Range(0, 100)) = 10.0
         _IntensityBias ("Intensity Bias", Range(0, 1)) = 0.5
         _TexelMagnification ("Texel Magnification", Range(0, 16)) = 1.0
-        _AA_Weight ("AntiAliasing Weight", Range(0, 1.0)) = 1.0
     }
     
     SubShader 
@@ -52,7 +50,6 @@
 			#define UPSCALE_IPADAIR2_TEX_X(x) (x * IPADAIR2_TEXSCALE_X)
 			#define UPSCALE_IPADAIR2_TEX_Y(y) (y * IPADAIR2_TEXSCALE_Y)
 
-			#define E _EnableEdgeAntiAliasing
 			#define W _ScreenRes_Width
 			#define H _ScreenRes_Height
 			#define inv(i) (1.0 - i)
@@ -75,9 +72,7 @@
 			uniform float _MultiplyNoise;
 			uniform float _IntensityBias;
 			uniform float _TexelMagnification;
-			uniform float _EnableEdgeAntiAliasing;
 			uniform float _EnableAlphaMixing;
-			uniform float _AA_Weight;
 			// uniform float4 _TexScale;
 
 			struct v2f
@@ -129,51 +124,12 @@
 				fixed4 objcol = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)));
 				fixed intensity = lerp(_IntensityBias, 1.0, (objcol.r + objcol.g + objcol.b)/3);
 
+				float temp = objcol.a;
 				objcol.a = round(objcol.a) * (inv(_EnableAlphaMixing)) + objcol.a * _EnableAlphaMixing;
 				noisecol = (noisecol - fixed4(0.5)) * (inv(intensity));
 				objcol.rgb = objcol.rgb + noisecol.rgb * objcol.a * _MultiplyNoise * _EnableNoise;
 
-				// SIMPLE EDGE BLUR (4 texture hor/ver fetches)
-				fixed4 p12 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(0, -1.0/H));		
-				fixed4 p21 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(-1.0/W, 0));
-				fixed4 p23 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(1.0/W, 0));		
-				fixed4 p32 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(0, 1.0/H));
-
-				fixed4 p12x = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(0, -2.0/H));		
-				fixed4 p21x = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(-2.0/W, 0));
-				fixed4 p23x = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(2.0/W, 0));		
-				fixed4 p32x = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)) + half2(0, 2.0/H));
-
-				// SIMPLE EDGE BLUR (4 texture diagonal fetches)
-				// fixed p11 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(-1.0/W, -1.0/H)).a;		
-				// fixed p13 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(1.0/W, -1.0/H)).a;
-				// fixed p31 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(-1.0/W, 1.0/H)).a;		
-				// fixed p33 = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), 1.0 - i.uv0.y) + half2(1.0/W, 1.0/H)).a;
-					
-				fixed4 avgcol = p12 * p12.a + p21 * p21.a + p23 * p23.a + p32 * p32.a; //+ p12x + p21x + p23x + p32x;
-				fixed weight = (int)p12.a + (int)p21.a + (int)p23.a + (int)p32.a; // + p12x.a + p21x.a + p23x.a + p32x.a;
-
-				if (weight == 0.0) // pixel is video
-					return vidcol;
-
-				if (weight == 4.0) // pixel is obj
-					return objcol;
-
-				weight /= 4.0;
-				//avgcol *= (weight/4.0);
-
-				//objcol.rgb = objcol.rgb * objcol.a + ((objcol + avgcol)/2.0) * inv(objcol.a);
-
-				// if (weight == 0)
-				// 	objcol.rgb = vidcol.rgb;
-				// else if (weight > 0)
-				// 	objcol.rgb = objcol.rgb;
-				// else
-				// 	objcol.rgb = inccol.rgb / weight; // * inv(objcol.a) + objcol.rgb * objcol.a;
-
-				//weight = max(weight * (_AA_Weight * (inv(objcol.a))), objcol.a);
-
-				fixed3 rescol = fixed3(lerp(vidcol.rgb, avgcol.rgb, 0.25)); /*weight * E + objcol.a * inv(E)));*/
+				fixed3 rescol = fixed3(lerp(vidcol.rgb, objcol.rgb, temp));
 				return fixed4(rescol.rgb, 1.0);
 			}
 			ENDCG
