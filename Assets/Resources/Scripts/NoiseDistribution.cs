@@ -18,6 +18,7 @@ public class NoiseDistribution : MonoBehaviour
 	private const int NOISE_TEX_SIZE = 128;
 	private const int PROC_SUBTEX_SIZE = 128;
 	private const int NUM_REF_FRAMES = 5;
+	private const float WAIT_SECONDS = 3.0f;
 
 	private enum NoiseDistributionStep
 	{
@@ -70,7 +71,7 @@ public class NoiseDistribution : MonoBehaviour
 		m_refFrameCounter = 0;
 		m_currentStep = NoiseDistributionStep.PROCESSING_WAIT;
 		m_prevStep = NoiseDistributionStep.CALC_NOISE_DISTRIB;
-		StartCoroutine (WaitForProcessing());
+		StartCoroutine (WaitForProcessing(WAIT_SECONDS));
 	}
 	
 	private void OnPostRender()
@@ -251,9 +252,9 @@ public class NoiseDistribution : MonoBehaviour
 			Debug.Log(j + ": [" + m_histogram [0, j] + ", " + m_histogram [1, j] + ", " + m_histogram [2, j] + "];");
 	}
 
-	private IEnumerator WaitForProcessing()
+	private IEnumerator WaitForProcessing(float s)
 	{
-		yield return new WaitForSeconds(4.0f);
+		yield return new WaitForSeconds(s);
 		m_currentStep = NoiseDistributionStep.REF_IMG_GRAB;
 	}
 
