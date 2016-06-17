@@ -20,7 +20,11 @@
 			#pragma fragment FRAG
 			#include "UnityCG.cginc"
 
-			#define MOTIONBLUR_SIZE 4
+			#define BLUR_SIZE 12
+			#define BLUR_RANGE 0.85
+			#define BLUR_STRENGTH 0.65
+			#define BLUR_OFFSET 0
+
 			#define AA _EnableEdgeAntiAliasing
 			#define W _CamRes_Width
 			#define H _CamRes_Height
@@ -56,14 +60,12 @@
 				fixed4 col = tex2D(_MainTex, i.uv);
 				fixed x = (int)col.a;
 
-				fixed4 temp;
-				fixed weight;
-
 				// Edge AntiAliasing Horizontal/Vertical sampling (4 texture fetches
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, -1.0/H)); fixed4 avgcol = temp * (int)temp.a;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 0)); avgcol += temp * (int)temp.a;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, 0)); avgcol += temp * (int)temp.a;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, 1.0/H)); avgcol += temp * (int)temp.a;
+				fixed4 avgcol = col * x * 4.0;
+				fixed4 temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, -1.0/H)); avgcol += temp * (int)temp.a * 2.0;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 0)); avgcol += temp * (int)temp.a * 2.0;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, 0)); avgcol += temp * (int)temp.a * 2.0;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, 1.0/H)); avgcol += temp * (int)temp.a * 2.0;
 
 				// Diagonal sampling (4 texture fetches)
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;	
@@ -71,20 +73,31 @@
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 1.0/H)); avgcol += temp * (int)temp.a;
 
-				weight = avgcol.a;
+				fixed weight = (int)avgcol.a;
 				avgcol /= weight;
 				col = fixed4(col.rgb * x + avgcol.rgb * inv(x), x + (weight * _AAWeight) * inv(x) * AA);
+				fixed aa = nat(col.a);
 
 				// Motion blur
-				_MotionBlurVec *= 1.25;
-				for (int j = 0; j < MOTIONBLUR_SIZE; j++)
+				fixed count = 0;
+				fixed4 addcol = col;
+				_MotionBlurVec *= BLUR_RANGE;
+				for (int j = 0; j < BLUR_SIZE; j++)
 				{
-					weight = 0.2 + j * 0.2;
-					temp = tex2D(_MainTex, i.uv + _MotionBlurVec * (-0.15 + j * 0.25));
-					col.rgb = col.rgb * inv(nat(temp.a)) + 
+					weight = BLUR_STRENGTH + j * (inv(BLUR_STRENGTH)/BLUR_SIZE);
+					temp = tex2D(_MainTex, i.uv + _MotionBlurVec * (BLUR_OFFSET + j * (1.0/BLUR_SIZE)));
+					count += (int)temp.a;
+
+					addcol.rgb +=
 						lerp(col.rgb * x + temp.rgb * inv(x), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
+					col.rgb = col.rgb * inv(nat(temp.a)) +
+					 	lerp(col.rgb * x + temp.rgb * inv(x), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
+					
 					col.a += (temp.a * inv(weight)) * inv(col.a) * nat(temp.a);
 				}
+				addcol.rgb /= clamp(count, 1.0, BLUR_SIZE);
+				col.rgb = addcol.rgb * inv(x) + col.rgb * x;
+				col.rgb /= 1.12 * inv(aa) + 1.0 * aa; // fix oversaturated outlines
 				return col;
 			}
 			ENDCG

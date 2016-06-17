@@ -165,11 +165,7 @@ public class NoiseDistribution : MonoBehaviour
 		for (int y = 0; y < NOISE_TEX_SIZE; y++) {
 			for (int x = 0; x < NOISE_TEX_SIZE; x++) {
 				for (int i = 0; i < 3; i++) {
-					double n = GetRandomNoiseValue(rnd, means[i], sdeviations[i]);
-
-//					double v = 1.0 / (sdeviations [i] * (2.0 * Math.PI)) * 
-//						Math.Exp (-(Math.Pow (rnd.NextDouble () - means [i], 2.0) /
-//						Math.Pow (2.0 * sdeviations [i], 2.0)));
+					double n = GetWeightedRandomNoiseValue(rnd, means[i], sdeviations[i]);
 
 					bool b = (n < 0) ? true : false;
 					byte result = (b) ?
@@ -197,7 +193,7 @@ public class NoiseDistribution : MonoBehaviour
 		m_genNoiseTexMat.SetFloat("_SD_B", Convert.ToSingle(sdeviations[2]));
 	}
 
-	private double GetRandomNoiseValue(System.Random rand, double mean, double sdev)
+	private double GetWeightedRandomNoiseValue(System.Random rand, double mean, double sdev)
 	{
 		double u1 = rand.NextDouble();
 		double u2 = rand.NextDouble();
