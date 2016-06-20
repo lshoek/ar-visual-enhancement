@@ -8,6 +8,7 @@ using Vuforia;
 public class GrabModelTexture : MonoBehaviour 
 {
 	[SerializeField] Shader m_customShader;
+	[SerializeField] Material m_customMat;
 	[SerializeField] GameObject m_modelReference;
 
 	[SerializeField] bool m_enableEdgeAA = true;
@@ -23,7 +24,6 @@ public class GrabModelTexture : MonoBehaviour
 	private Vector3 m_blurVec;
 
 	private RenderTexture m_modelTexture;
-	private Material m_customMat;
 	private int m_camResWidth;
 	private int m_camResHeight;
 
