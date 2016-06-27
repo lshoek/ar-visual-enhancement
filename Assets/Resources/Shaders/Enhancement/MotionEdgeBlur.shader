@@ -5,15 +5,15 @@
         [HideInInspector] _MainTex ("Base (RGB)", 2D) = "white" {}
         [HideInInspector] _CamRes_Width ("_CamResWidth", Float) = 640.0
         [HideInInspector] _CamRes_Width ("_CamResHeight", Float) = 480.0
-
         [HideInInspector] _MotionBlurVec ("MotionBlurVector", Vector) = (0, 0, 0, 0)
 
      	[Toggle] _EnableEdgeAntiAliasing ("Enable Edge Antialiasing", Float) = 1.0
         _AA_WEIGHT ("AA WEIGHT", Range(0, 0.5)) = 0.125
         _BLUR_SIZE ("BLUR SIZE", Range(1.0, 16.0)) = 12.0
-        _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 2.0
-        _BLUR_STRENGTH ("BLUR STRENGTH", Range(0, 10.0)) = 3.0
+        _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 1.25
+        _BLUR_STRENGTH ("BLUR STRENGTH", Range(0, 10.0)) = 2.5
         _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
+        _BLUR_OUTLINE_CORRECTION ("BLUR OUTLINE CORRECTION", Range(0, 1.0)) = 0.175
     }
     
     SubShader 
@@ -41,6 +41,7 @@
 			uniform float _BLUR_RANGE;
 			uniform float _BLUR_STRENGTH;
 			uniform float _BLUR_OFFSET;
+			uniform float _BLUR_OUTLINE_CORRECTION;
 
 			struct v2f
 			{
@@ -59,9 +60,19 @@
 			// WARNING! BRANCHING! GET RID OF THIS! // natural number
 			fixed nat(float f) { return (f > 0 && f < 1.0) ? 0 : 1.0; }
 
+			// Possible solution: yet to be thoroughly tested
+			// fixed nat(float f) { return ((int)f & 1) + 1.0 * inv(f); }
+
 			fixed4 FRAG (v2f i) : COLOR
 			{
-				// gauss kernel
+				/*****
+				 **
+				 **	ANTI-ALIASING
+				 **		3x3 kernel, 8 additional texture samples
+				 **
+				 *****/
+
+				/** Gauss kernel (sigma 3.0) **/
 				float kernel[13] = 
 				{ 
 					0.018816,	0.034474,	0.056577,	
@@ -71,32 +82,49 @@
 					0.018816
 				};
 
-				// Store obj color
+				/** Store obj color **/
 				fixed4 col = tex2D(_MainTex, i.uv);
 				fixed x = (int)col.a;
 
-				// Edge AntiAliasing Horizontal/Vertical sampling (4 texture fetches
+				/** Check if current pixel is translucent (0>x<1.0) **/
+				fixed aa = nat(col.a);
+
+				/** Edge AntiAliasing Horizontal/Vertical sampling (4 texture fetches) **/
 				fixed4 avgcol = col * x * 4.0;
 				fixed4 temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, -1.0/H)); avgcol += temp * (int)temp.a * 2.0;
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 0)); avgcol += temp * (int)temp.a * 2.0;
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, 0)); avgcol += temp * (int)temp.a * 2.0;
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, 1.0/H)); avgcol += temp * (int)temp.a * 2.0;
 
-				// Diagonal sampling (4 texture fetches)
+				/** Diagonal sampling (4 texture fetches) **/
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;	
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;
 				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 1.0/H)); avgcol += temp * (int)temp.a;
 
+				/** Apply weight to incremental color **/
 				fixed weight = (int)avgcol.a;
 				avgcol /= weight;
-				col = fixed4(col.rgb * x + avgcol.rgb * inv(x), x + (weight * _AA_WEIGHT) * inv(x) * AA);
-				fixed aa = nat(col.a);
 
-				// Motion blur
-				fixed count = 0;
+				/** EDGE BLUR (BOUNDARY-ONLY ANTI ALIASING) **/
+				//col = fixed4(col.rgb * x + avgcol.rgb * inv(x), x + (weight * _AA_WEIGHT) * inv(x) * AA);
+				
+				/** SIMPLE BLUR (FULL ANTI-ALIASING) **/
+				col = fixed4(avgcol.rgb, x + (weight * _AA_WEIGHT) * inv(x) * AA);
+
+				/*****
+				 **
+				 **	MOTION BLUR
+				 **		12 additional texture samples
+				 **
+				 *****/
+
+				/** Setup the variables **/
+				fixed count = 1.0;
 				fixed4 addcol = col;
 				_MotionBlurVec *= _BLUR_RANGE;
+
+				/** Mix 12 color samples along the blur vector **/
 				for (int j = 0; j < _BLUR_SIZE; j++)
 				{
 					weight = inv(_BLUR_STRENGTH * kernel[j]);
@@ -109,9 +137,15 @@
 					  	lerp(col.rgb * x + temp.rgb * inv(x), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
 					col.a += (temp.a * inv(weight)) * inv(col.a) * nat(temp.a);
 				}
-				addcol.rgb /= clamp(count, 1.0, _BLUR_SIZE);
+
+				//** Separate object pixels from camera pixels **/
+				addcol.rgb /= max(1.0, count);
 				col.rgb = addcol.rgb * inv(x) + col.rgb * x;
-				col.rgb /= 1.25 * inv(aa) + aa; // fix oversaturated outlines in blur
+
+				/** Fix oversaturated outlines in blur **/
+				col.rgb /= _BLUR_OUTLINE_CORRECTION * inv(aa) + 1.0;
+				
+				/** Return result **/
 				return col;
 			}
 			ENDCG

@@ -8,6 +8,7 @@ public class CustomVideoBackground : MonoBehaviour
 {
 	[SerializeField] Camera m_FXCamera;
 	[SerializeField] GameObject m_renderTarget;
+	[SerializeField] Texture2D m_defaultNoiseTexture;
 
 	private const int NUM_NOISE_DELAY_FRAMES = 5;
 

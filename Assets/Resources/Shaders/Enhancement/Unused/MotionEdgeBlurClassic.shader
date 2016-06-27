@@ -48,9 +48,7 @@ Shader "Custom/MotionEdgeBlurClassic"
 			}
 
 			// WARNING! BRANCHING! GET RID OF THIS! // natural number
-			// fixed nat(float f) { return (f > 0 && f < 1.0) ? 0 : 1.0; }
-			// Possible solution: yet to be thoroughly tested
-			fixed nat(float f) { return ((int)f & 1) + 1.0 * inv(f); }
+			fixed nat(float f) { return (f > 0 && f < 1.0) ? 0 : 1.0; }
 
 			fixed4 FRAG (v2f i) : COLOR
 			{

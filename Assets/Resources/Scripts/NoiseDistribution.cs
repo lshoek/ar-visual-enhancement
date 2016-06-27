@@ -3,10 +3,12 @@ using System.Collections;
 using System;
 using System.IO;
 using System.Linq;
+using UnityEngine.UI;
 
 [RequireComponent(typeof(Camera))]
 public class NoiseDistribution : MonoBehaviour 
 {
+	[SerializeField] Button m_button;
 	[SerializeField] Shader m_calcAverageShader;
 	[SerializeField] Shader m_calcVariationShader;
 	[SerializeField] Shader m_generateNoiseTexShader;
@@ -42,6 +44,7 @@ public class NoiseDistribution : MonoBehaviour
 	private Texture2D m_noiseTexture;
 
 	private int m_refFrameCounter;
+	private bool m_readyForProcessing = false;
 	private bool m_secureCoroutine = true;
 	private int[,] m_histogram;
 
@@ -66,14 +69,17 @@ public class NoiseDistribution : MonoBehaviour
 		m_noiseTexture.filterMode = FilterMode.Point;
 
 		m_avgFrame = new RenderTexture (PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
-		m_histogram = new int[3, COLOR_DEPTH*2];
+
 
 		m_refFrameCounter = 0;
 		m_currentStep = NoiseDistributionStep.PROCESSING_WAIT;
 		m_prevStep = NoiseDistributionStep.CALC_NOISE_DISTRIB;
+
+		m_button.interactable = false;
+
 		StartCoroutine (WaitForProcessing(WAIT_SECONDS));
 	}
-	
+
 	private void OnPostRender()
 	{
 		switch (m_currentStep) {
@@ -114,6 +120,7 @@ public class NoiseDistribution : MonoBehaviour
 			tex.ReadPixels(new Rect(0, 0, PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE), 0, 0);
 			tex.Apply ();
 			byte[] bytes = tex.GetRawTextureData();
+			m_histogram = new int[3, COLOR_DEPTH*2];
 
 			for (int j = 0; j < bytes.Length; j+=3) 
 			{
@@ -168,17 +175,25 @@ public class NoiseDistribution : MonoBehaviour
 					double n = GetWeightedRandomNoiseValue(rnd, means[i], sdeviations[i]);
 
 					bool b = (n < 0) ? true : false;
+					try {
 					byte result = (b) ?
 						(byte)(GRAY - Convert.ToByte(Math.Round(Math.Abs(n)))) :
 						(byte)(GRAY + Convert.ToByte(Math.Round(n)));
 					
 					bytes[(y * NOISE_TEX_SIZE + x) * 3 + i] = result;
+					} catch (System.OverflowException e) {
+						Debug.Log ("Too much motion detection. Try again!");
+						m_currentStep = NoiseDistributionStep.PROCESSING_WAIT;
+						StartCoroutine(WaitForProcessing(0.5f));
+						return;
+					}
 				}
 			}
 		}
 		m_noiseTexture.LoadRawTextureData (bytes);
 		m_noiseTexture.Apply ();
 		m_currentStep = NoiseDistributionStep.PROCESS_FINISHED;
+		StartCoroutine(WaitForProcessing(0.5f));
 	}
 
 	// Not used for the time being
@@ -225,6 +240,30 @@ public class NoiseDistribution : MonoBehaviour
 		return m_noiseTexture;
 	}
 
+	private IEnumerator WaitForProcessing(float s)
+	{
+		yield return new WaitForSeconds(s);
+		m_button.onClick.AddListener(OnClick);
+		m_button.interactable = true;
+	}
+
+	private void Reset()
+	{
+
+	}
+
+	private void OnClick()
+	{
+		ProcessNoiseDistribution();
+		m_button.interactable = false;
+		m_button.onClick.RemoveAllListeners();
+	}
+
+	private void ProcessNoiseDistribution()
+	{
+		m_currentStep = NoiseDistributionStep.REF_IMG_GRAB;
+	}
+
 	#region DEBUG FUNCTIONS
 	private void PrintNoiseDistributionResults()
 	{
@@ -246,12 +285,6 @@ public class NoiseDistribution : MonoBehaviour
 		Debug.Log ("HISTOGRAM OUTPUT:");
 		for (int j = 0; j <= m_histogram.GetUpperBound(1); j++) 
 			Debug.Log(j + ": [" + m_histogram [0, j] + ", " + m_histogram [1, j] + ", " + m_histogram [2, j] + "];");
-	}
-
-	private IEnumerator WaitForProcessing(float s)
-	{
-		yield return new WaitForSeconds(s);
-		m_currentStep = NoiseDistributionStep.REF_IMG_GRAB;
 	}
 
 	// Show collected reference images and whatnot
