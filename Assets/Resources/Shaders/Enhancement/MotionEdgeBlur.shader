@@ -43,15 +43,32 @@
 			uniform float _BLUR_OFFSET;
 			uniform float _BLUR_OUTLINE_CORRECTION;
 
+
 			struct v2f
 			{
 				float4 vertex : SV_POSITION;
 				float2 uv : TEXCOORD0;
+				half2 r00;
+				half2 r01;
+				half2 r02;
+				half2 r10;
+				half2 r12;
+				half2 r20;
+				half2 r21;
+				half2 r22;
 			};
 
 			v2f VERT (appdata_base v)
 			{
 				v2f o;
+				o.r00 = v.texcoord + half2(0, -1.0/H);
+				o.r01 = v.texcoord + half2(-1.0/W, 0);
+				o.r02 = v.texcoord + half2(1.0/W, 0);
+				o.r10 = v.texcoord + half2(0, 1.0/H);
+				o.r12 = v.texcoord + half2(-1.0/W, -1.0/H);
+				o.r20 = v.texcoord + half2(1.0/W, -1.0/H); 
+				o.r21 = v.texcoord + half2(-1.0/W, -1.0/H);
+				o.r22 = v.texcoord + half2(-1.0/W, 1.0/H); 
 				o.vertex = mul(UNITY_MATRIX_MVP, v.vertex);
 				o.uv = v.texcoord;
 				return o;
@@ -82,14 +99,14 @@
 				fixed4 avgcol = col * x * 4.0;
 				fixed4 temp;
 
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, -1.0/H)); avgcol += temp * temp.a * 2.0;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 0)); avgcol += temp * temp.a * 2.0;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, 0)); avgcol += temp * temp.a * 2.0;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, 1.0/H)); avgcol += temp * temp.a * 2.0;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * temp.a;	
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, -1.0/H)); avgcol += temp * temp.a;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * temp.a;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 1.0/H)); avgcol += temp * temp.a;
+				temp = tex2D(_MainTex, i.r00); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, i.r01); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, i.r02); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, i.r10); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, i.r12); avgcol += temp * temp.a;	
+				temp = tex2D(_MainTex, i.r20); avgcol += temp * temp.a;
+				temp = tex2D(_MainTex, i.r21); avgcol += temp * temp.a;
+				temp = tex2D(_MainTex, i.r22); avgcol += temp * temp.a;
 
 				/** Apply weight to incremental color **/
 				fixed weight = avgcol.a;
