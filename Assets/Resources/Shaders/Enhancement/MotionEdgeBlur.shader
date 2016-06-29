@@ -9,11 +9,11 @@
 
      	[Toggle] _EnableEdgeAntiAliasing ("Enable Edge Antialiasing", Float) = 1.0
         _AA_WEIGHT ("AA WEIGHT", Range(0, 0.5)) = 0.125
-        _BLUR_SIZE ("BLUR SIZE", Range(1.0, 16.0)) = 12.0
+        _BLUR_SIZE ("BLUR SIZE", Range(1.0, 16.0)) = 13.0
         _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 1.25
         _BLUR_STRENGTH ("BLUR STRENGTH", Range(0, 10.0)) = 2.5
         _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
-        _BLUR_OUTLINE_CORRECTION ("BLUR OUTLINE CORRECTION", Range(0, 1.0)) = 0.175
+        _BLUR_OUTLINE_CORRECTION ("BLUR OUTLINE CORRECTION", Range(0, 1.0)) = 0 //0.175
     }
     
     SubShader 
@@ -65,10 +65,43 @@
 
 			fixed4 FRAG (v2f i) : COLOR
 			{
+				/** Store obj color **/
+				fixed4 col = tex2D(_MainTex, i.uv);
+				fixed x = (int)col.a;
+
+				/** Check if current pixel is translucent (0>x<1.0) **/
+				fixed aa = nat(col.a);
+
 				/*****
 				 **
-				 **	ANTI-ALIASING
-				 **		3x3 kernel, 8 additional texture samples
+				 **		ANTI-ALIASING
+				 **		3x3 kernel, 9 texture samples
+				 **
+				 *****/
+
+				fixed4 avgcol = col * x * 4.0;
+				fixed4 temp;
+
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, -1.0/H)); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 0)); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, 0)); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, 1.0/H)); avgcol += temp * temp.a * 2.0;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * temp.a;	
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, -1.0/H)); avgcol += temp * temp.a;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * temp.a;
+				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 1.0/H)); avgcol += temp * temp.a;
+
+				/** Apply weight to incremental color **/
+				fixed weight = avgcol.a;
+				avgcol /= weight;
+				
+				/** SIMPLE BLUR (FULL ANTI-ALIASING) **/
+				col = fixed4(avgcol.rgb, x + (weight * _AA_WEIGHT) * inv(x) * AA); //col = fixed4(col.rgb * x + avgcol.rgb * inv(x), x + (weight * _AA_WEIGHT) * inv(x) * AA);
+
+				/*****
+				 **
+				 **		MOTION BLUR
+				 **		12 texture samples
 				 **
 				 *****/
 
@@ -82,49 +115,12 @@
 					0.018816
 				};
 
-				/** Store obj color **/
-				fixed4 col = tex2D(_MainTex, i.uv);
-				fixed x = (int)col.a;
-
-				/** Check if current pixel is translucent (0>x<1.0) **/
-				fixed aa = nat(col.a);
-
-				/** Edge AntiAliasing Horizontal/Vertical sampling (4 texture fetches) **/
-				fixed4 avgcol = col * x * 4.0;
-				fixed4 temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, -1.0/H)); avgcol += temp * (int)temp.a * 2.0;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 0)); avgcol += temp * (int)temp.a * 2.0;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, 0)); avgcol += temp * (int)temp.a * 2.0;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(0, 1.0/H)); avgcol += temp * (int)temp.a * 2.0;
-
-				/** Diagonal sampling (4 texture fetches) **/
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;	
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, -1.0/H)); avgcol += temp * (int)temp.a;
-				temp = tex2D(_MainTex, half2(i.uv.x, i.uv.y) + half2(-1.0/W, 1.0/H)); avgcol += temp * (int)temp.a;
-
-				/** Apply weight to incremental color **/
-				fixed weight = (int)avgcol.a;
-				avgcol /= weight;
-
-				/** EDGE BLUR (BOUNDARY-ONLY ANTI ALIASING) **/
-				//col = fixed4(col.rgb * x + avgcol.rgb * inv(x), x + (weight * _AA_WEIGHT) * inv(x) * AA);
-				
-				/** SIMPLE BLUR (FULL ANTI-ALIASING) **/
-				col = fixed4(avgcol.rgb, x + (weight * _AA_WEIGHT) * inv(x) * AA);
-
-				/*****
-				 **
-				 **	MOTION BLUR
-				 **		12 additional texture samples
-				 **
-				 *****/
-
 				/** Setup the variables **/
 				fixed count = 1.0;
 				fixed4 addcol = col;
 				_MotionBlurVec *= _BLUR_RANGE;
 
-				/** Mix 12 color samples along the blur vector **/
+				/** Mix 13 color samples along the blur vector **/
 				for (int j = 0; j < _BLUR_SIZE; j++)
 				{
 					weight = inv(_BLUR_STRENGTH * kernel[j]);
