@@ -80,26 +80,40 @@
 				float4 pos : SV_POSITION;
 				half2 uv0 : TEXCOORD0;
 				half2 uv1 : TEXCOORD1;
+				half2 uv2 : TEXCOORD2;
 			};
 
-			float aspectfix(float uvx) 
+			half2 aspectfix(half2 uv) 
 			{
 				float aspect = _AspectRatio/_Vuforia_Aspect;
 				float shift = lerp(0, 1.0/aspect, (1.0 - aspect) * 0.5);
-				return lerp(0, 1.0/aspect, uvx) - shift;
+				return half2(lerp(0, 1.0/aspect, uv.x) - shift, inv(uv.y));
 			}
 
 			v2f VERT(appdata_img v)
 			{
 				v2f o;
 				o.pos = mul (UNITY_MATRIX_MVP, v.vertex);
+ 
+				#if IOSBUILD_IPADAIR1
+				o.uv0.x = UPSCALE_IPADAIR1_TEX_X(v.texcoord.x);
+				o.uv0.y = UPSCALE_IPADAIR1_TEX_Y(v.texcoord.y);
+				#elif IOSBUILD_IPADAIR2
+				o.uv0.x = UPSCALE_IPADAIR2_TEX_X(v.texcoord.x);
+				o.uv0.y = UPSCALE_IPADAIR2_TEX_Y(v.texcoord.y);
+				#else
 				o.uv0 = v.texcoord;
+				#endif
 
-				_NoiseTex_ST = float4(
+				// i.uv.x *= _TexScale.x;
+				// i.uv.y *= _TexScale.y;
+
+				_NoiseTex_ST = half4(
 					(W*_AspectRatio/_NoiseTexSize)/_TexelMagnification, 
 					(H/_NoiseTexSize)/_TexelMagnification,
 					_NoiseTexOffset0, _NoiseTexOffset1);
 				o.uv1 = TRANSFORM_TEX(v.texcoord, _NoiseTex);
+				o.uv2 = aspectfix(o.uv0);
 				return o;
 			}
 
@@ -107,21 +121,7 @@
 			{
 				fixed4 vidcol = tex2D(_MainTex, i.uv0);
 				fixed4 noisecol = tex2D(_NoiseTex, i.uv1);
-
-				#if IOSBUILD_IPADAIR1
-				i.uv0.x = UPSCALE_IPADAIR1_TEX_X(i.uv0.x);
-				i.uv0.y = UPSCALE_IPADAIR1_TEX_Y(i.uv0.y);
-				#endif
-
-				#if IOSBUILD_IPADAIR2
-				i.uv0.x = UPSCALE_IPADAIR2_TEX_X(i.uv0.x);
-				i.uv0.y = UPSCALE_IPADAIR2_TEX_Y(i.uv0.y);
-				#endif
-
-				// i.uv.x *= _TexScale.x;
-				// i.uv.y *= _TexScale.y;
-
-				fixed4 objcol = tex2D(_ObjectTex, half2(aspectfix(i.uv0.x), inv(i.uv0.y)));
+				fixed4 objcol = tex2D(_ObjectTex, i.uv2);
 				fixed intensity = lerp(_IntensityBias, 1.0, (objcol.r + objcol.g + objcol.b)/3);
 
 				float temp = objcol.a;

@@ -13,7 +13,6 @@
         _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 1.25
         _BLUR_STRENGTH ("BLUR STRENGTH", Range(0, 10.0)) = 2.5
         _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
-        _BLUR_OUTLINE_CORRECTION ("BLUR OUTLINE CORRECTION", Range(0, 1.0)) = 0 //0.175
     }
     
     SubShader 
@@ -32,17 +31,15 @@
 
 			uniform sampler2D _MainTex;
 			uniform float2 _MotionBlurVec;
-			uniform float _CamRes_Width;
-			uniform float _CamRes_Height;
-			uniform float _EnableEdgeAntiAliasing;
-			uniform float _AA_WEIGHT;
+			uniform half _CamRes_Width;
+			uniform half _CamRes_Height;
+			uniform half _EnableEdgeAntiAliasing;
+			uniform half _AA_WEIGHT;
 
-			uniform float _BLUR_SIZE;
-			uniform float _BLUR_RANGE;
-			uniform float _BLUR_STRENGTH;
-			uniform float _BLUR_OFFSET;
-			uniform float _BLUR_OUTLINE_CORRECTION;
-
+			uniform half _BLUR_SIZE;
+			uniform half _BLUR_RANGE;
+			uniform half _BLUR_STRENGTH;
+			uniform half _BLUR_OFFSET;
 
 			struct v2f
 			{
@@ -74,17 +71,12 @@
 				return o;
 			}
 
-			// WARNING! BRANCHING! GET RID OF THIS! // natural number
-			fixed nat(float f) { return (f > 0 && f < 1.0) ? 0 : 1.0; }
-
-			// Possible solution: yet to be thoroughly tested
-			// fixed nat(float f) { return ((int)f & 1) + 1.0 * inv(f); }
+			fixed nat(float f) { return floor(f) == f; }
 
 			fixed4 FRAG (v2f i) : COLOR
 			{
 				/** Store obj color **/
 				fixed4 col = tex2D(_MainTex, i.uv);
-				fixed x = (int)col.a;
 
 				/** Check if current pixel is translucent (0>x<1.0) **/
 				fixed aa = nat(col.a);
@@ -96,9 +88,8 @@
 				 **
 				 *****/
 
-				fixed4 avgcol = col * x * 4.0;
+				fixed4 avgcol = col * col.a * 4.0;
 				fixed4 temp;
-
 				temp = tex2D(_MainTex, i.r00); avgcol += temp * temp.a * 2.0;
 				temp = tex2D(_MainTex, i.r01); avgcol += temp * temp.a * 2.0;
 				temp = tex2D(_MainTex, i.r02); avgcol += temp * temp.a * 2.0;
@@ -113,7 +104,7 @@
 				avgcol /= weight;
 				
 				/** SIMPLE BLUR (FULL ANTI-ALIASING) **/
-				col = fixed4(avgcol.rgb, x + (weight * _AA_WEIGHT) * inv(x) * AA); //col = fixed4(col.rgb * x + avgcol.rgb * inv(x), x + (weight * _AA_WEIGHT) * inv(x) * AA);
+				col = fixed4(avgcol.rgb, col.a + (weight * _AA_WEIGHT) * inv(col.a) * AA); //col = fixed4(col.rgb * x + avgcol.rgb * inv(x), x + (weight * _AA_WEIGHT) * inv(x) * AA);
 
 				/*****
 				 **
@@ -123,7 +114,7 @@
 				 *****/
 
 				/** Gauss kernel (sigma 3.0) **/
-				float kernel[13] = 
+				static const float kernel[13] = 
 				{ 
 					0.018816,	0.034474,	0.056577,	
 					0.083173,	0.109523,	0.129188,	
@@ -145,20 +136,16 @@
 					count += (int)temp.a;
 
 					addcol.rgb +=
-						lerp(col.rgb * x + temp.rgb * inv(x), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
+						lerp(col.rgb * col.a + temp.rgb * inv(col.a), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
 					col.rgb = col.rgb * inv(nat(temp.a)) + 
-					  	lerp(col.rgb * x + temp.rgb * inv(x), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
+					  	lerp(col.rgb * col.a + temp.rgb * inv(col.a), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
 					col.a += (temp.a * inv(weight)) * inv(col.a) * nat(temp.a);
 				}
 
 				//** Separate object pixels from camera pixels **/
 				addcol.rgb /= max(1.0, count);
-				col.rgb = addcol.rgb * inv(x) + col.rgb * x;
+				col.rgb = addcol.rgb * inv(col.a) + col.rgb * col.a;
 
-				/** Fix oversaturated outlines in blur **/
-				col.rgb /= _BLUR_OUTLINE_CORRECTION * inv(aa) + 1.0;
-				
-				/** Return result **/
 				return col;
 			}
 			ENDCG
