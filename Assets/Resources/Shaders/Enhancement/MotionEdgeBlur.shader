@@ -10,9 +10,10 @@
      	[Toggle] _EnableEdgeAntiAliasing ("Enable Edge Antialiasing", Float) = 1.0
         _AA_WEIGHT ("AA WEIGHT", Range(0, 0.5)) = 0.125
         _BLUR_SIZE ("BLUR SIZE", Range(1.0, 16.0)) = 13.0
-        _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 1.25
-        _BLUR_STRENGTH ("BLUR STRENGTH", Range(0, 10.0)) = 2.5
-        _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
+        _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 1.5
+        _BLUR_STRENGTH ("BLUR STRENGTH", Range(0, 10.0)) = 2.0
+        _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.4
+        _BLUR_ALPHA_CORRECTION ("BLUR ALPHA CORRECTION", Range(1.0, 5.0)) = 2.5
     }
     
     SubShader 
@@ -40,6 +41,7 @@
 			uniform half _BLUR_RANGE;
 			uniform half _BLUR_STRENGTH;
 			uniform half _BLUR_OFFSET;
+			uniform half _BLUR_ALPHA_CORRECTION;
 
 			struct v2f
 			{
@@ -139,7 +141,7 @@
 						lerp(col.rgb * col.a + temp.rgb * inv(col.a), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
 					col.rgb = col.rgb * inv(nat(temp.a)) + 
 					  	lerp(col.rgb * col.a + temp.rgb * inv(col.a), temp.rgb, inv(weight) * temp.a) * nat(temp.a);
-					col.a += (temp.a * inv(weight)) * inv(col.a) * nat(temp.a);
+					col.a += (temp.a * inv(weight)) * inv(col.a) * nat(temp.a) * _BLUR_ALPHA_CORRECTION;
 				}
 
 				//** Separate object pixels from camera pixels **/

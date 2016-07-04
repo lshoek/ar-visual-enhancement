@@ -192,6 +192,9 @@ public class NoiseDistribution : MonoBehaviour
 		}
 		m_noiseTexture.LoadRawTextureData (bytes);
 		m_noiseTexture.Apply ();
+		System.IO.File.WriteAllBytes(
+			Application.persistentDataPath + "/tempnoise.png", m_noiseTexture.EncodeToPNG());
+
 		m_currentStep = NoiseDistributionStep.PROCESS_FINISHED;
 		StartCoroutine(WaitForProcessing(0.5f));
 	}
@@ -246,12 +249,7 @@ public class NoiseDistribution : MonoBehaviour
 		m_button.onClick.AddListener(OnClick);
 		m_button.interactable = true;
 	}
-
-	private void Reset()
-	{
-
-	}
-
+	
 	private void OnClick()
 	{
 		ProcessNoiseDistribution();

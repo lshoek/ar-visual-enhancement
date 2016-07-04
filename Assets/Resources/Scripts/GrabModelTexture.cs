@@ -36,7 +36,7 @@ public class GrabModelTexture : MonoBehaviour
 		m_prevBlurPos = new Vector3(0, 1.0f, 0);
 		m_customMat = new Material (m_customShader);
 		m_modelTexture = new RenderTexture (640, 640, 24, RenderTextureFormat.ARGB32);
-		m_modelTexture.antiAliasing = 4;
+		m_modelTexture.antiAliasing = 2;
 		GetComponent<Camera> ().targetTexture = m_modelTexture;
 	}
 
