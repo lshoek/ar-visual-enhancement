@@ -11,11 +11,6 @@ public class GrabModelTexture : MonoBehaviour
 	[SerializeField] Material m_customMat;
 	[SerializeField] GameObject m_modelReference;
 
-	[SerializeField] bool m_enableEdgeAA = true;
-	[SerializeField] bool m_enableMotionBlur = true;
-
-	[SerializeField] [Range(0, 1.0f)] float m_AAWeight = 1.0f;
-
 	private const int MOTIONBLUR_SIZE = 4; // Has to be the same as defined in SimpleEdgeBlur shader
 	private const float WAIT_SECONDS = 3.0f;
 
@@ -51,12 +46,11 @@ public class GrabModelTexture : MonoBehaviour
 			m_blurVec = m_currBlurPos - m_prevBlurPos;
 
 		m_customMat.SetVector ("_MotionBlurVec", m_blurVec);
+		m_customMat.SetFloat ("_MotionBlurVecLength", m_blurVec.magnitude);
 		m_customMat.SetFloat ("_CamRes_Width", m_camResWidth);
 		m_customMat.SetFloat ("_CamRes_Height", m_camResHeight);
-		m_customMat.SetFloat ("_EnableMotionBlur", (m_enableMotionBlur) ? 1.0f : 0);
-		m_customMat.SetFloat ("_EnableEdgeAntiAliasing", (m_enableEdgeAA) ? 1.0f : 0);
-		m_customMat.SetFloat ("_AAWeight", m_AAWeight);
 		Graphics.Blit (GetComponent<Camera>().targetTexture, m_modelTexture, m_customMat);
+		Debug.Log (m_blurVec.magnitude);
 	}
 
 	private IEnumerator WaitForVuforiaCamData(float s)
