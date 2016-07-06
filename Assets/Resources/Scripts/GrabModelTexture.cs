@@ -11,7 +11,6 @@ public class GrabModelTexture : MonoBehaviour
 	[SerializeField] Material m_customMat;
 	[SerializeField] GameObject m_modelReference;
 
-	private const int MOTIONBLUR_SIZE = 4; // Has to be the same as defined in SimpleEdgeBlur shader
 	private const float WAIT_SECONDS = 3.0f;
 
 	private Vector3 m_currBlurPos;

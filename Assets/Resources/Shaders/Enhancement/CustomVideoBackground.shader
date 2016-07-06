@@ -126,7 +126,7 @@
 
 				float temp = objcol.a;
 				objcol.a = round(objcol.a) * (inv(_EnableAlphaMixing)) + objcol.a * _EnableAlphaMixing;
-				noisecol = (noisecol - fixed4(0.5)) * (inv(intensity));
+				noisecol = (noisecol - fixed4(0.5, 0.5, 0.5, 0.5)) * (inv(intensity));
 				objcol.rgb = objcol.rgb + noisecol.rgb * objcol.a * _MultiplyNoise * _EnableNoise;
 
 				fixed3 rescol = fixed3(lerp(vidcol.rgb, objcol.rgb, temp));

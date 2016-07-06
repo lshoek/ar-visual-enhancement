@@ -9,8 +9,7 @@ public class CustomVideoBackground : MonoBehaviour
 	[SerializeField] Camera m_FXCamera;
 	[SerializeField] GameObject m_renderTarget;
 	[SerializeField] Texture2D m_defaultNoiseTexture;
-
-	private const int NUM_NOISE_DELAY_FRAMES = 5;
+	[SerializeField] int m_numNoiseDelayFrames = 2;
 
 	private int m_noiseTexSize;
 	private int m_noiseDelayCounter;
@@ -69,7 +68,7 @@ public class CustomVideoBackground : MonoBehaviour
 		m.SetFloat("_NoiseTexSize", m_noiseTexSize);
 
 		++m_noiseDelayCounter;
-		if (m_noiseDelayCounter >= NUM_NOISE_DELAY_FRAMES) {
+		if (m_noiseDelayCounter >= m_numNoiseDelayFrames) {
 			m.SetFloat ("_NoiseTexOffset0", Convert.ToSingle (m_rng.Next (m_noiseTexSize)) / m_noiseTexSize);
 			m.SetFloat ("_NoiseTexOffset1", Convert.ToSingle (m_rng.Next (m_noiseTexSize)) / m_noiseTexSize);
 		}
@@ -81,7 +80,7 @@ public class CustomVideoBackground : MonoBehaviour
 		m.SetFloat("_AspectRatio", Camera.main.aspect);
 		m.SetFloat("_Vuforia_Aspect", m_renderTarget.transform.localScale.x/m_renderTarget.transform.localScale.z);
 
-		m_noiseDelayCounter %= NUM_NOISE_DELAY_FRAMES;
+		m_noiseDelayCounter %= m_numNoiseDelayFrames;
 
 		/*** TEST CODE BEGIN
 		Vector2 scale = new Vector2 (1.0f, 1.0f);
