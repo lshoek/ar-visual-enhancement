@@ -24,6 +24,8 @@ public class CustomVideoBackground : MonoBehaviour
 		m_noiseTexGenerated = false;
 		m_rng = new System.Random ();
 
+		m_defaultNoiseTexture.filterMode = FilterMode.Bilinear;
+
 		Shader.DisableKeyword ("IOSBUILD_OFF");
 		Shader.DisableKeyword ("IOSBUILD_IPADAIR1");
 		Shader.DisableKeyword ("IOSBUILD_IPADAIR2");
@@ -61,9 +63,9 @@ public class CustomVideoBackground : MonoBehaviour
 		if (!m_noiseTexGenerated) {
 			m_noiseTexGenerated = (GetComponent<NoiseDistribution> ().GetNoiseTexture() != null) ? true : false;
 			m.SetTexture ("_NoiseTex", (m_noiseTexGenerated) ?
-				GetComponent<NoiseDistribution> ().GetNoiseTexture() : new Texture2D(64, 64));
+				GetComponent<NoiseDistribution> ().GetNoiseTexture() : m_defaultNoiseTexture);
 			m_noiseTexSize = (m_noiseTexGenerated) ? 
-				GetComponent<NoiseDistribution> ().GetNoiseTexture ().width : m_noiseTexSize;
+				GetComponent<NoiseDistribution> ().GetNoiseTexture ().width : m_defaultNoiseTexture.width;
 		}
 		m.SetFloat("_NoiseTexSize", m_noiseTexSize);
 

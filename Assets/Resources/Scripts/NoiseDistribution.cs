@@ -66,7 +66,7 @@ public class NoiseDistribution : MonoBehaviour
 			m_varFrames[i] = new RenderTexture(PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 		}
 		m_noiseTexture = new Texture2D(NOISE_TEX_SIZE, NOISE_TEX_SIZE, TextureFormat.RGB24, false);
-		m_noiseTexture.filterMode = FilterMode.Point;
+		m_noiseTexture.filterMode = FilterMode.Bilinear;
 
 		m_avgFrame = new RenderTexture (PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE, 0, RenderTextureFormat.ARGB32);
 

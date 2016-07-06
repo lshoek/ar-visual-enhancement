@@ -8,7 +8,7 @@
         [HideInInspector] _CamRes_Width ("_CamResWidth", Float) = 640.0
         [HideInInspector] _CamRes_Width ("_CamResHeight", Float) = 480.0
 
-        _BLUR_SAMPLES ("BLUR SAMPLES", Range(1.0, 25.0)) = 9.0
+        _BLUR_SAMPLES ("BLUR SAMPLES", Range(1.0, 25.0)) = 11.0
         _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 0.75
         _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
         _BLUR_THRESHOLD ("BLUR THRESHOLD", Range(0, 5.0)) = 2.0
