@@ -1,4 +1,4 @@
-﻿Shader "Custom/MotionEdgeBlurDiscrete" 
+﻿Shader "Custom/MotionEdgeBlur" 
 {
     Properties 
     {
@@ -8,10 +8,10 @@
         [HideInInspector] _CamRes_Width ("_CamResWidth", Float) = 640.0
         [HideInInspector] _CamRes_Width ("_CamResHeight", Float) = 480.0
 
-        _BLUR_SAMPLES ("BLUR SAMPLES", Range(1.0, 25.0)) = 9.0
+        _BLUR_SAMPLES ("BLUR SAMPLES", Range(1.0, 25.0)) = 11.0
         _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 0.75
         _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
-        _BLUR_THRESHOLD ("BLUR THRESHOLD", Range(0, 5.0)) = 2.0
+        _BLUR_THRESHOLD ("BLUR THRESHOLD", Range(0, 5.0)) = 1.5
     }
     
     SubShader 
@@ -42,29 +42,20 @@
 			struct v2f
 			{
 				float4 vertex : SV_POSITION;
-				float2 uv : TEXCOORD0;
-				half2 r00;
-				half2 r01;
-				half2 r02;
-				half2 r10;
-				half2 r12;
-				half2 r20;
-				half2 r21;
-				half2 r22;
+				half2 uv : TEXCOORD0;
+				half2 r00 : TEXCOORD1;
+				half2 r01 : TEXCOORD2;
+				half2 r02 : TEXCOORD3;
+				half2 r03 : TEXCOORD4;
 			};
 
 			v2f VERT (appdata_base v)
 			{
 				v2f o;
-				o.r00 = v.texcoord + half2(0, -1.0/H);
-				o.r01 = v.texcoord + half2(-1.0/W, 0);
-				o.r02 = v.texcoord + half2(1.0/W, 0);
-				o.r10 = v.texcoord + half2(0, 1.0/H);
-				o.r12 = v.texcoord + half2(-1.0/W, -1.0/H);
-				o.r20 = v.texcoord + half2(1.0/W, -1.0/H); 
-				o.r21 = v.texcoord + half2(-1.0/W, -1.0/H);
-				o.r22 = v.texcoord + half2(-1.0/W, 1.0/H);
-
+				o.r00 = v.texcoord + half2(-0.5/W, -1.0/H);
+				o.r01 = v.texcoord + half2(1.0/W, -0.5/H);
+				o.r02 = v.texcoord + half2(0.5/W, 1.0/H);
+				o.r03 = v.texcoord + half2(-1.0/W, 0.5/H);
 				o.vertex = mul(UNITY_MATRIX_MVP, v.vertex);
 				o.uv = v.texcoord;
 				return o;
@@ -93,8 +84,8 @@
 
 				/*****
 				 **
-				 **		ANTI-ALIASING (Discrete Sampling)
-				 **		3x3 kernel, 9 texture samples
+				 **		ANTI-ALIASING (Linear Sampling)
+				 **		3x3 kernel, 5 texture samples
 				 **
 				 *****/
 				
@@ -103,18 +94,13 @@
 
 				/** Sampling **/
 				fixed4 temp = tex2D(_MainTex, i.uv) * 4.0;
-				temp += tex2D(_MainTex, i.r00) * 2.0;
-				temp += tex2D(_MainTex, i.r01) * 2.0;
-				temp += tex2D(_MainTex, i.r02) * 2.0;
-				temp += tex2D(_MainTex, i.r10) * 2.0;
-				temp += tex2D(_MainTex, i.r12);	
-				temp += tex2D(_MainTex, i.r20);
-				temp += tex2D(_MainTex, i.r21);
-				temp += tex2D(_MainTex, i.r22);
+				temp += tex2D(_MainTex, i.r00) * 3.0;
+				temp += tex2D(_MainTex, i.r01) * 3.0;
+				temp += tex2D(_MainTex, i.r02) * 3.0;
+				temp += tex2D(_MainTex, i.r03) * 3.0;
 
 				/** Apply weight to incremental color **/
-				fixed weight = temp.a;
-				temp.rgb /= weight;
+				temp.rgb /= temp.a;
 				temp.a /= 16.0;
 				
 				/** Edge anti-aliasing **/

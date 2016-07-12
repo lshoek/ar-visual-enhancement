@@ -7,7 +7,6 @@
 		_Texture_Frame_2 ("TextureFrame2", 2D) = "white" {}
         _Texture_Frame_3 ("TextureFrame3", 2D) = "white" {}
         _Texture_Frame_4 ("TextureFrame4", 2D) = "white" {}
-        _NumRefFrames ("NumRefFrames", Float) = 4.0
     }
    
     SubShader 
@@ -27,7 +26,6 @@
 			uniform sampler2D _Texture_Frame_2;
             uniform sampler2D _Texture_Frame_3;
             uniform sampler2D _Texture_Frame_4;
-            uniform float _NumRefFrames;
 
             struct v2f
             {
@@ -50,8 +48,7 @@
 				col += tex2D (_Texture_Frame_2, i.uv0);
                 col += tex2D (_Texture_Frame_3, i.uv0);
                 col += tex2D (_Texture_Frame_4, i.uv0);
-				col /= _NumRefFrames;
-
+				col /= col.a;
 				return fixed4(col.rgb, 1.0);
             }
             ENDCG

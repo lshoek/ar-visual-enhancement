@@ -122,7 +122,7 @@
 				fixed4 vidcol = tex2D(_MainTex, i.uv0);
 				fixed4 noisecol = tex2D(_NoiseTex, i.uv1);
 				fixed4 objcol = tex2D(_ObjectTex, i.uv2);
-				fixed intensity = lerp(_IntensityBias, 1.0, (objcol.r + objcol.g + objcol.b)/3);
+				fixed intensity = lerp(_IntensityBias, 1.0, (objcol.r + objcol.g + objcol.b)/3.0);
 
 				float temp = objcol.a;
 				objcol.a = round(objcol.a) * (inv(_EnableAlphaMixing)) + objcol.a * _EnableAlphaMixing;

@@ -12,7 +12,6 @@ public class NoiseDistribution : MonoBehaviour
 	[SerializeField] Shader m_calcAverageShader;
 	[SerializeField] Shader m_calcVariationShader;
 	[SerializeField] Shader m_generateNoiseTexShader;
-	[SerializeField] Shader m_unlitTextureShader;
 
 	[SerializeField] DrawHistogram m_drawHistogramRef;
 	
@@ -36,7 +35,6 @@ public class NoiseDistribution : MonoBehaviour
 	private Material m_calcAvgMat;
 	private Material m_calcVarMat;
 	private Material m_genNoiseTexMat;
-	private Material m_unlitTexMat;
 
 	private Texture2D[] m_refFrames;
 	private RenderTexture[] m_varFrames;
@@ -44,8 +42,6 @@ public class NoiseDistribution : MonoBehaviour
 	private Texture2D m_noiseTexture;
 
 	private int m_refFrameCounter;
-	private bool m_readyForProcessing = false;
-	private bool m_secureCoroutine = true;
 	private int[,] m_histogram;
 
 	private double[] means = new double[3];
@@ -56,7 +52,6 @@ public class NoiseDistribution : MonoBehaviour
 		m_calcAvgMat = new Material(m_calcAverageShader);
 		m_calcVarMat = new Material(m_calcVariationShader);
 		m_genNoiseTexMat = new Material(m_generateNoiseTexShader);
-		m_unlitTexMat = new Material(m_unlitTextureShader);
 
 		m_refFrames = new Texture2D[NUM_REF_FRAMES];
 		m_varFrames = new RenderTexture[NUM_REF_FRAMES];
@@ -120,7 +115,7 @@ public class NoiseDistribution : MonoBehaviour
 			tex.ReadPixels(new Rect(0, 0, PROC_SUBTEX_SIZE, PROC_SUBTEX_SIZE), 0, 0);
 			tex.Apply ();
 			byte[] bytes = tex.GetRawTextureData();
-			m_histogram = new int[3, COLOR_DEPTH*2];
+			m_histogram = new int[3, COLOR_DEPTH];
 
 			for (int j = 0; j < bytes.Length; j+=3) 
 			{
@@ -155,7 +150,7 @@ public class NoiseDistribution : MonoBehaviour
 
 		// Divide by pixel total
 		for (int i = 0; i < 3; i++)
-			sdeviations [i] = sums [i] / numPixels;
+			sdeviations [i] = Math.Sqrt(sums [i] / numPixels);
 
 		// Finished
 		PrintNoiseDistributionResults();
@@ -181,7 +176,7 @@ public class NoiseDistribution : MonoBehaviour
 						(byte)(GRAY + Convert.ToByte(Math.Round(n)));
 					
 					bytes[(y * NOISE_TEX_SIZE + x) * 3 + i] = result;
-					} catch (System.OverflowException e) {
+					} catch (System.OverflowException) {
 						Debug.Log ("Too much motion detection. Try again!");
 						m_currentStep = NoiseDistributionStep.PROCESSING_WAIT;
 						StartCoroutine(WaitForProcessing(0.5f));
@@ -215,7 +210,7 @@ public class NoiseDistribution : MonoBehaviour
 	{
 		double u1 = rand.NextDouble();
 		double u2 = rand.NextDouble();
-		double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+		double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
 		return mean + sdev * randStdNormal;
 	}
 
