@@ -95,8 +95,6 @@ public class RenderObjectTexture : MonoBehaviour
 			Graphics.Blit (m_tempTexture, ObjectTexture, GaussianBlurMat);
 			break;
 		}
-		// Debug.Log ("blurvec magnitude: " + m_blurVec.magnitude);
-		// StartCoroutine (WaitRender());
 	}
 
 	private void CheckVuforiaInitStatus()

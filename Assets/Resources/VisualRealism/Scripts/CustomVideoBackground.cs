@@ -8,6 +8,7 @@ public class CustomVideoBackground : MonoBehaviour
 {
 	/** NOISE CONFIG **/
 	[SerializeField] Texture2D DefaultNoiseTexture;
+	[SerializeField] bool DEBUG_OBJECT_TEXTURE = false;
 	[SerializeField] bool ENABLE_NOISE = true;
 	[SerializeField] bool ENABLE_ALPHA_MIXING = true;
 	[SerializeField][Range(0, 60)] int NOISE_DELAY_FRAMES = 2;
@@ -43,38 +44,58 @@ public class CustomVideoBackground : MonoBehaviour
 		Debug.Log("NoiseGeneration: " + (m_noiseGenerationEnabled ? "ON" : "OFF"));
 		DefaultNoiseTexture.filterMode = FilterMode.Bilinear;
 
-		Shader.DisableKeyword ("IOSBUILD_OFF");
+		/** Shader Keywords **/
+		Shader.EnableKeyword ("DEFAULT");
+		Shader.DisableKeyword ("ANDROIDBUILD");
+		Shader.DisableKeyword ("DEBUG_OBJECT_TEXTURE");
 		Shader.DisableKeyword ("IOSBUILD_IPADAIR1");
 		Shader.DisableKeyword ("IOSBUILD_IPADAIR2");
+		Shader.DisableKeyword ("IOSBUILD_IPADAIRPRO");
 
-#if UNITY_IOS
-		/** Determine the device to use their corresponding shaders **/
-		switch (UnityEngine.iOS.Device.generation) 
-		{
-		case UnityEngine.iOS.DeviceGeneration.iPadAir1:
-			#if !UNITY_EDITOR
-			Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
-			Shader.EnableKeyword ("IOSBUILD_IPADAIR1");
-			#endif
-			break;
-
-		case UnityEngine.iOS.DeviceGeneration.iPadAir2:
-			#if !UNITY_EDITOR
-			Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
-			Shader.EnableKeyword ("IOSBUILD_IPADAIR2");
-			#endif
-			break;
-
-		default:
-			Shader.EnableKeyword ("IOSBUILD_OFF");
-			break;
-		}
-#else
-		Shader.EnableKeyword ("IOSBUILD_OFF");
+		if (DEBUG_OBJECT_TEXTURE) {
+			Shader.EnableKeyword ("DEBUG_OBJECT_TEXTURE");
+			Shader.DisableKeyword ("DEFAULT");
+		} else {
+#if UNITY_ANDROID
+			Debug.Log ("Running outside Unity Editor. Android-specific shader modifications activated.");
+			Shader.EnableKeyword ("ANDROIDBUILD");
+			Shader.DisableKeyword ("DEFAULT");
+#elif UNITY_IOS
+			/** Determine the device to use their corresponding shaders **/
+			switch (UnityEngine.iOS.Device.generation) 
+			{
+			case UnityEngine.iOS.DeviceGeneration.iPadAir1:
+#if !UNITY_EDITOR
+				Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
+				Shader.EnableKeyword ("IOSBUILD_IPADAIR1");
+				Shader.DisableKeyword ("DEFAULT");
 #endif
-		Debug.Log ("IOSBUILD_OFF:" + Shader.IsKeywordEnabled("IOSBUILD_OFF"));
+				break;
+
+			case UnityEngine.iOS.DeviceGeneration.iPadAir2:
+#if !UNITY_EDITOR
+				Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
+				Shader.EnableKeyword ("IOSBUILD_IPADAIR2");
+				Shader.DisableKeyword ("DEFAULT");
+#endif
+				break;
+
+			case UnityEngine.iOS.DeviceGeneration.Unknown:
+#if !UNITY_EDITOR
+				Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
+				Shader.EnableKeyword ("IOSBUILD_IPADAIRPRO");
+				Shader.DisableKeyword ("DEFAULT");
+#endif
+				break;
+			}
+#endif
+		}
+		Debug.Log ("DEFAULT:" + Shader.IsKeywordEnabled("DEFAULT"));
+		Debug.Log ("DEBUG_OBJECT_TEXTURE:" + Shader.IsKeywordEnabled("DEBUG_OBJECT_TEXTURE"));
+		Debug.Log ("ANDROIDBUILD:" + Shader.IsKeywordEnabled("ANDROIDBUILD"));
 		Debug.Log ("IOSBUILD_IPADAIR1:" + Shader.IsKeywordEnabled("IOSBUILD_IPADAIR1"));
 		Debug.Log ("IOSBUILD_IPADAIR2:" + Shader.IsKeywordEnabled("IOSBUILD_IPADAIR2"));
+		Debug.Log ("IOSBUILD_IPADAIRPRO:" + Shader.IsKeywordEnabled("IOSBUILD_IPADAIRPRO"));
 	}
 
 	private void OnPreRender() 
@@ -119,19 +140,21 @@ public class CustomVideoBackground : MonoBehaviour
 
 		m_noiseDelayCounter %= NOISE_DELAY_FRAMES;
 
-		/*** TEST CODE BEGIN
-		Vector2 scale = new Vector2 (1.0f, 1.0f);
+		if (DEBUG_OBJECT_TEXTURE) {
+			Vector2 scale = new Vector2 (1.0f, 1.0f);
 #if UNITY_EDITOR
-		scale.x += Input.mousePosition.x / Screen.width;
-		scale.y += Input.mousePosition.y / Screen.height;
+			scale.x += Input.mousePosition.x / Screen.width;
+			scale.y += Input.mousePosition.y / Screen.height;
 #else
-		if (Input.touches.Length > 0) {
-			scale.x += Input.GetTouch(0).position.x / Screen.width;
-			scale.y += Input.GetTouch(0).position.y / Screen.height;
-		}
+			if (Input.touches.Length > 0) {
+				scale.x += Input.GetTouch(0).position.x / Screen.width;
+				scale.y += Input.GetTouch(0).position.y / Screen.height;
+			}
 #endif
-		m_renderTarget.GetComponent<Renderer> ().material.SetVector ("_TexScale", scale);
-		Debug.Log ("X:" + scale.x + ", Y:" + scale.y);
-		/*** TEST CODE END ***/
+			m.SetVector ("_DEBUG_TEX_SCALE", scale);
+			string debugText = "MAGIC NUMBERS; X:" + scale.x + ", Y:" + scale.y;
+			GameObject.FindGameObjectWithTag("DebugText").GetComponent<UnityEngine.UI.Text>().text = debugText;
+			Debug.Log (debugText);
+		}
 	}
 }

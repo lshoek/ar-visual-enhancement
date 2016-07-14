@@ -14,7 +14,8 @@
         [HideInInspector] _ScreenRes_Height ("ScreenResHeight", Float) = 480.0
         [HideInInspector] _AspectRatio ("AspectRatio", Float) = 1.0
         [HideInInspector] _Vuforia_Aspect ("VuforiaAspect", Float) = 1.0
-        //[HideInInspector] _TexScale ("TexScale", Vector) = (1.0, 1.0, 1.0, 1.0)
+
+        [HideInInspector] _DEBUG_TEX_SCALE ("Debug Tex Scale", Vector) = (1.0, 1.0, 1.0, 1.0)
 
         [HideInInspector] _ENABLE_NOISE ("Enable Noise", Float) = 1.0
         [HideInInspector] _ENABLE_ALPHA_MIXING ("Enable Alpha Mixing", Float) = 1.0 // for translucent surfaces
@@ -34,7 +35,7 @@
 			Lighting Off
 
             CGPROGRAM
-            #pragma multi_compile IOSBUILD_OFF IOSBUILD_IPADAIR1 IOSBUILD_IPADAIR2
+            #pragma multi_compile DEFAULT ANDROIDBUILD IOSBUILD_IPADAIR1 IOSBUILD_IPADAIR2 IOSBUILD_IPADAIRPRO DEBUG_OBJECT_TEXTURE
 			#pragma vertex VERT
 			#pragma fragment FRAG
 			#include "UnityCG.cginc"
@@ -46,6 +47,8 @@
 			#define IPADAIR2_TEXSCALE_Y 	1.420000
 			#define IPADAIRPRO_TEXSCALE_X 	1.600000
 			#define IPADAIRPRO_TEXSCALE_Y 	1.067000
+			#define ANDROID_TEXSCALE_X 		1.595000
+			#define ANDROID_TEXSCALE_Y 		1.420000
 
 			#define UPSCALE_IPADAIR1_TEX_X(x) (x * IPADAIR1_TEXSCALE_X)
 			#define UPSCALE_IPADAIR1_TEX_Y(y) (y * IPADAIR1_TEXSCALE_Y)
@@ -53,6 +56,8 @@
 			#define UPSCALE_IPADAIR2_TEX_Y(y) (y * IPADAIR2_TEXSCALE_Y)
 			#define UPSCALE_IPADAIRPRO_TEX_X(x) (x * IPADAIRPRO_TEXSCALE_X)
 			#define UPSCALE_IPADAIRPRO_TEX_Y(y) (y * IPADAIRPRO_TEXSCALE_Y)
+			#define UPSCALE_ANDROID_TEX_X(x) (x * ANDROID_TEXSCALE_X)
+			#define UPSCALE_ANDROID_TEX_Y(y) (y * ANDROID_TEXSCALE_Y)
 
 			#define W _ScreenRes_Width
 			#define H _ScreenRes_Height
@@ -77,7 +82,7 @@
 			uniform float _MULTIPLY_NOISE;
 			uniform float _INTENSITY_BIAS;
 			uniform float _TEXEL_MAGNIFICATION;
-			// uniform float4 _TexScale;
+			uniform float4 _DEBUG_TEX_SCALE;
 
 			struct v2f
 			{
@@ -106,14 +111,19 @@
 				o.uv2.x = UPSCALE_IPADAIR2_TEX_X(v.texcoord.x);
 				o.uv2.y = UPSCALE_IPADAIR2_TEX_Y(v.texcoord.y);
 				#elif IOSBUILD_IPADAIRPRO
-				i.uv.x = UPSCALE_IPADAIRPRO_TEX_X(v.texcoord.x);
-				i.uv.y = UPSCALE_IPADAIRPRO_TEX_Y(v.texcoord.y);
+				o.uv2.x = UPSCALE_IPADAIRPRO_TEX_X(v.texcoord.x);
+				o.uv2.y = UPSCALE_IPADAIRPRO_TEX_Y(v.texcoord.y);
+				#elif ANDROIDBUILD
+				o.uv2.x = UPSCALE_ANDROID_TEX_X(v.texcoord.x);
+				o.uv2.y = UPSCALE_ANDROID_TEX_Y(v.texcoord.y);
 				#else
 				o.uv2 = v.texcoord;
 				#endif
 
-				// i.uv.x *= _TexScale.x;
-				// i.uv.y *= _TexScale.y;
+				#if DEBUG_OBJECT_TEXTURE
+				o.uv2.x *= _DEBUG_TEX_SCALE.x;
+				o.uv2.y *= _DEBUG_TEX_SCALE.y;
+				#endif
 
 				_NoiseTex_ST = half4(
 					(W*_AspectRatio/_NoiseTexSize)/_TEXEL_MAGNIFICATION, 
