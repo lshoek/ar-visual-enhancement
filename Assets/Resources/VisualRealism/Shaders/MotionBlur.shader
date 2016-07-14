@@ -4,7 +4,7 @@
     {
         [HideInInspector] _MainTex ("Base (RGB)", 2D) = "white" {}
         [HideInInspector] _MotionBlurVec ("MotionBlurVector", Vector) = (0, 0, 0, 0)
-        [HideInInspector] _MotionBlurVecLenght ("MotionBlurVectorLength", Float) = 0
+        [HideInInspector] _MotionBlurVecLength ("MotionBlurVectorLength", Float) = 0
         [HideInInspector] _BLUR_SAMPLES ("BLUR SAMPLES", Range(1.0, 25.0)) = 11.0
         [HideInInspector] _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 1.0
         [HideInInspector] _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
@@ -24,7 +24,6 @@
 			uniform sampler2D _MainTex;
 			uniform float2 _MotionBlurVec;
 			uniform half _MotionBlurVecLength;
-			
 			uniform half _BLUR_SAMPLES;
 			uniform half _BLUR_RANGE;
 			uniform half _BLUR_OFFSET;

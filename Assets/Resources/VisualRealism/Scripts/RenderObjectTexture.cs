@@ -77,6 +77,7 @@ public class RenderObjectTexture : MonoBehaviour
 		MotionBlurMat.SetFloat ("_MotionBlurVecLength", m_blurVec.magnitude);
 		GaussianBlurMat.SetFloat ("_CamRes_Width", m_camResWidth);
 		GaussianBlurMat.SetFloat ("_CamRes_Height", m_camResHeight);
+		GaussianBlurMat.SetFloat ("_MotionBlurVecLength", m_blurVec.magnitude);
 
 		/** Rendering commands **/
 		switch (EffectsConfig) {

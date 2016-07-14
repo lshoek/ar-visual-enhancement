@@ -6,11 +6,8 @@ using System;
 [RequireComponent (typeof(Camera))]
 public class CustomVideoBackground : MonoBehaviour 
 {
-	[SerializeField] Camera FXCamera;
-	[SerializeField] GameObject RenderTarget;
-	[SerializeField] Texture2D DefaultNoiseTexture;
-
 	/** NOISE CONFIG **/
+	[SerializeField] Texture2D DefaultNoiseTexture;
 	[SerializeField] bool ENABLE_NOISE = true;
 	[SerializeField] bool ENABLE_ALPHA_MIXING = true;
 	[SerializeField][Range(0, 60)] int NOISE_DELAY_FRAMES = 2;
@@ -19,6 +16,9 @@ public class CustomVideoBackground : MonoBehaviour
 	[SerializeField][Range(0, 16.0f)] float TEXEL_MAGNIFICATION = 2.0f;
 			
 	private const int DEFAULT_NOISE_TEX_SIZE = 64;
+
+	private Camera FXCamera;
+	private GameObject RenderTarget;
 
 	private int m_noiseTexSize;
 	private int m_noiseDelayCounter = 0;
@@ -29,6 +29,9 @@ public class CustomVideoBackground : MonoBehaviour
 
 	private void Start() 
 	{
+		FXCamera = GameObject.FindWithTag("FXCamera").GetComponentInChildren<Camera>();
+		RenderTarget = GameObject.FindWithTag("BackgroundPlane");
+
 		m_noiseTexSize = DEFAULT_NOISE_TEX_SIZE;
 		m_rng = new System.Random ();
 

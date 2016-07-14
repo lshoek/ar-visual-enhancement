@@ -5,6 +5,7 @@
         [HideInInspector] _MainTex ("Base (RGB)", 2D) = "white" {}
         [HideInInspector] _CamRes_Width ("_CamResWidth", Float) = 640.0
         [HideInInspector] _CamRes_Height ("_CamResHeight", Float) = 480.0
+        [HideInInspector] _MotionBlurVecLength ("_MotionBlurVecLength", Float) = 0
     }
     
     SubShader 
@@ -23,6 +24,7 @@
 			uniform sampler2D _MainTex;
 			uniform half _CamRes_Width;
 			uniform half _CamRes_Height;
+			uniform half _MotionBlurVecLength;
 
 			struct v2f
 			{
