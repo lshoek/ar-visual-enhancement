@@ -15,8 +15,7 @@
         [HideInInspector] _AspectRatio ("AspectRatio", Float) = 1.0
         [HideInInspector] _Vuforia_Aspect ("VuforiaAspect", Float) = 1.0
 
-        [HideInInspector] _DEBUG_TEX_SCALE ("Debug Tex Scale", Vector) = (1.0, 1.0, 1.0, 1.0)
-
+        [HideInInspector] _TEX_SCALE ("Tex Scale", Vector) = (1.0, 1.0, 1.0, 1.0)
         [HideInInspector] _ENABLE_NOISE ("Enable Noise", Float) = 1.0
         [HideInInspector] _ENABLE_ALPHA_MIXING ("Enable Alpha Mixing", Float) = 1.0 // for translucent surfaces
         [HideInInspector] _MULTIPLY_NOISE ("Multiply Noise", Range(0, 100.0)) = 10.0
@@ -26,7 +25,6 @@
     
     SubShader 
     {
-        Tags { "Queue" = "Overlay" }
         Pass 
         {  
         	ZTest Always
@@ -35,35 +33,15 @@
 			Lighting Off
 
             CGPROGRAM
-            #pragma multi_compile DEFAULT ANDROIDBUILD IOSBUILD_IPADAIR1 IOSBUILD_IPADAIR2 IOSBUILD_IPADAIRPRO DEBUG_OBJECT_TEXTURE
 			#pragma vertex VERT
 			#pragma fragment FRAG
 			#include "UnityCG.cginc"
-
-			/*** MAGIC NUMBERS ***/
-			#define IPADAIR1_TEXSCALE_X 	1.595000
-			#define IPADAIR1_TEXSCALE_Y 	1.420000
-			#define IPADAIR2_TEXSCALE_X 	1.585000
-			#define IPADAIR2_TEXSCALE_Y 	1.420000
-			#define IPADAIRPRO_TEXSCALE_X 	1.600000
-			#define IPADAIRPRO_TEXSCALE_Y 	1.067000
-			#define ANDROID_TEXSCALE_X 		1.595000
-			#define ANDROID_TEXSCALE_Y 		1.420000
-
-			#define UPSCALE_IPADAIR1_TEX_X(x) (x * IPADAIR1_TEXSCALE_X)
-			#define UPSCALE_IPADAIR1_TEX_Y(y) (y * IPADAIR1_TEXSCALE_Y)
-			#define UPSCALE_IPADAIR2_TEX_X(x) (x * IPADAIR2_TEXSCALE_X)
-			#define UPSCALE_IPADAIR2_TEX_Y(y) (y * IPADAIR2_TEXSCALE_Y)
-			#define UPSCALE_IPADAIRPRO_TEX_X(x) (x * IPADAIRPRO_TEXSCALE_X)
-			#define UPSCALE_IPADAIRPRO_TEX_Y(y) (y * IPADAIRPRO_TEXSCALE_Y)
-			#define UPSCALE_ANDROID_TEX_X(x) (x * ANDROID_TEXSCALE_X)
-			#define UPSCALE_ANDROID_TEX_Y(y) (y * ANDROID_TEXSCALE_Y)
 
 			#define W _ScreenRes_Width
 			#define H _ScreenRes_Height
 			#define inv(i) (1.0 - i)
 
-			uniform sampler2D _MainTex;
+			uniform sampler2D _MainTex;	
 			uniform sampler2D _ObjectTex;
 			uniform sampler2D _NoiseTex;
 
@@ -77,12 +55,12 @@
 			uniform float _Vuforia_Aspect;
 
 			// Debug
+			uniform float4 _TEX_SCALE;
 			uniform float _ENABLE_NOISE;
 			uniform float _ENABLE_ALPHA_MIXING;
 			uniform float _MULTIPLY_NOISE;
 			uniform float _INTENSITY_BIAS;
 			uniform float _TEXEL_MAGNIFICATION;
-			uniform float4 _DEBUG_TEX_SCALE;
 
 			struct v2f
 			{
@@ -102,28 +80,11 @@
 			v2f VERT(appdata_img v)
 			{
 				v2f o;
-				o.pos = mul (UNITY_MATRIX_MVP, v.vertex);
+				o.pos = mul(UNITY_MATRIX_MVP, v.vertex);
  
-				#if IOSBUILD_IPADAIR1
-				o.uv2.x = UPSCALE_IPADAIR1_TEX_X(v.texcoord.x);
-				o.uv2.y = UPSCALE_IPADAIR1_TEX_Y(v.texcoord.y);
-				#elif IOSBUILD_IPADAIR2
-				o.uv2.x = UPSCALE_IPADAIR2_TEX_X(v.texcoord.x);
-				o.uv2.y = UPSCALE_IPADAIR2_TEX_Y(v.texcoord.y);
-				#elif IOSBUILD_IPADAIRPRO
-				o.uv2.x = UPSCALE_IPADAIRPRO_TEX_X(v.texcoord.x);
-				o.uv2.y = UPSCALE_IPADAIRPRO_TEX_Y(v.texcoord.y);
-				#elif ANDROIDBUILD
-				o.uv2.x = UPSCALE_ANDROID_TEX_X(v.texcoord.x);
-				o.uv2.y = UPSCALE_ANDROID_TEX_Y(v.texcoord.y);
-				#else
 				o.uv2 = v.texcoord;
-				#endif
-
-				#if DEBUG_OBJECT_TEXTURE
-				o.uv2.x *= _DEBUG_TEX_SCALE.x;
-				o.uv2.y *= _DEBUG_TEX_SCALE.y;
-				#endif
+				o.uv2.x *= _TEX_SCALE.x;
+				o.uv2.y *= _TEX_SCALE.y;
 
 				_NoiseTex_ST = half4(
 					(W*_AspectRatio/_NoiseTexSize)/_TEXEL_MAGNIFICATION, 

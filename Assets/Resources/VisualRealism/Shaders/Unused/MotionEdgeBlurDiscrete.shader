@@ -1,4 +1,4 @@
-﻿Shader "Custom/MotionBlur" 
+Shader "Custom/MotionBlur" 
 {
     Properties 
     {
@@ -103,13 +103,13 @@
 
 				/** Sampling **/
 				fixed4 temp = tex2D(_MainTex, i.uv) * 4.0;
-				temp += tex2D(_MainTex, i.r00) * 2.0;
 				temp += tex2D(_MainTex, i.r01) * 2.0;
-				temp += tex2D(_MainTex, i.r02) * 2.0;
 				temp += tex2D(_MainTex, i.r10) * 2.0;
-				temp += tex2D(_MainTex, i.r12);
+				temp += tex2D(_MainTex, i.r12) * 2.0;
+				temp += tex2D(_MainTex, i.r21) * 2.0;
+				temp += tex2D(_MainTex, i.r00);
+				temp += tex2D(_MainTex, i.r02);
 				temp += tex2D(_MainTex, i.r20);
-				temp += tex2D(_MainTex, i.r21);
 				temp += tex2D(_MainTex, i.r22);
 
 				/** Apply weight to incremental color **/

@@ -8,7 +8,8 @@ public class CustomVideoBackground : MonoBehaviour
 {
 	/** NOISE CONFIG **/
 	[SerializeField] Texture2D DefaultNoiseTexture;
-	[SerializeField] bool DEBUG_OBJECT_TEXTURE = false;
+	[SerializeField] bool DEBUG_OBJECT_TEX = false;
+	[SerializeField] bool FORCE_DEFAULT_TEX_SCALE = false;
 	[SerializeField] bool ENABLE_NOISE = true;
 	[SerializeField] bool ENABLE_ALPHA_MIXING = true;
 	[SerializeField][Range(0, 60)] int NOISE_DELAY_FRAMES = 2;
@@ -25,8 +26,25 @@ public class CustomVideoBackground : MonoBehaviour
 	private int m_noiseDelayCounter = 0;
 	private bool m_noiseTexGenerated = false;
 	private bool m_noiseGenerationEnabled = false;
+	private System.Random m_rng;
 
-	private System.Random m_rng; 
+	private enum TargetDevices {
+		DEFAULT,
+		IPADAIR1,
+		IPADAIR2,
+		IPADAIRPRO_SMALL,
+		ANDROID,
+		DEBUG
+	};
+	private int m_currentTargetDevice;
+	private float[,] m_deviceScales = {
+		{ 1.0f, 1.0f },
+		{ 1.595f, 1.420f },
+		{ 1.585f, 1.420f },
+		{ 1.600f, 1.067f },
+		{ 1.595f, 1.420f },
+		{ 1.0f, 1.0f },
+	};
 
 	private void Start() 
 	{
@@ -44,58 +62,35 @@ public class CustomVideoBackground : MonoBehaviour
 		Debug.Log("NoiseGeneration: " + (m_noiseGenerationEnabled ? "ON" : "OFF"));
 		DefaultNoiseTexture.filterMode = FilterMode.Bilinear;
 
-		/** Shader Keywords **/
-		Shader.EnableKeyword ("DEFAULT");
-		Shader.DisableKeyword ("ANDROIDBUILD");
-		Shader.DisableKeyword ("DEBUG_OBJECT_TEXTURE");
-		Shader.DisableKeyword ("IOSBUILD_IPADAIR1");
-		Shader.DisableKeyword ("IOSBUILD_IPADAIR2");
-		Shader.DisableKeyword ("IOSBUILD_IPADAIRPRO");
-
-		if (DEBUG_OBJECT_TEXTURE) {
-			Shader.EnableKeyword ("DEBUG_OBJECT_TEXTURE");
-			Shader.DisableKeyword ("DEFAULT");
+		m_currentTargetDevice = (int)TargetDevices.DEFAULT;
+		if (DEBUG_OBJECT_TEX) {
+			m_currentTargetDevice = (int)TargetDevices.DEBUG;
 		} else {
-#if UNITY_ANDROID
+#if !UNITY_EDITOR
+#if UNITY_ANDROID 
 			Debug.Log ("Running outside Unity Editor. Android-specific shader modifications activated.");
-			Shader.EnableKeyword ("ANDROIDBUILD");
-			Shader.DisableKeyword ("DEFAULT");
+			m_currentTargetDevice = (int)TargetDevices.ANDROID;
 #elif UNITY_IOS
-			/** Determine the device to use their corresponding shaders **/
 			switch (UnityEngine.iOS.Device.generation) 
 			{
 			case UnityEngine.iOS.DeviceGeneration.iPadAir1:
-#if !UNITY_EDITOR
-				Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
-				Shader.EnableKeyword ("IOSBUILD_IPADAIR1");
-				Shader.DisableKeyword ("DEFAULT");
-#endif
+				Debug.Log ("m_currentTargetDevice: iPadAir1");
+				m_currentTargetDevice = (int)TargetDevices.IPADAIR1;
 				break;
 
 			case UnityEngine.iOS.DeviceGeneration.iPadAir2:
-#if !UNITY_EDITOR
-				Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
-				Shader.EnableKeyword ("IOSBUILD_IPADAIR2");
-				Shader.DisableKeyword ("DEFAULT");
-#endif
+				Debug.Log ("m_currentTargetDevice: iPadAir2");
+				m_currentTargetDevice = (int)TargetDevices.IPADAIR2;
 				break;
 
 			case UnityEngine.iOS.DeviceGeneration.Unknown:
-#if !UNITY_EDITOR
-				Debug.Log ("Running outside Unity Editor. iOS-specific shader modifications activated.");
-				Shader.EnableKeyword ("IOSBUILD_IPADAIRPRO");
-				Shader.DisableKeyword ("DEFAULT");
-#endif
+				Debug.Log ("m_currentTargetDevice: iPadAirPro?");
+				m_currentTargetDevice = (int)TargetDevices.IPADAIRPRO_SMALL;
 				break;
 			}
 #endif
+#endif
 		}
-		Debug.Log ("DEFAULT:" + Shader.IsKeywordEnabled("DEFAULT"));
-		Debug.Log ("DEBUG_OBJECT_TEXTURE:" + Shader.IsKeywordEnabled("DEBUG_OBJECT_TEXTURE"));
-		Debug.Log ("ANDROIDBUILD:" + Shader.IsKeywordEnabled("ANDROIDBUILD"));
-		Debug.Log ("IOSBUILD_IPADAIR1:" + Shader.IsKeywordEnabled("IOSBUILD_IPADAIR1"));
-		Debug.Log ("IOSBUILD_IPADAIR2:" + Shader.IsKeywordEnabled("IOSBUILD_IPADAIR2"));
-		Debug.Log ("IOSBUILD_IPADAIRPRO:" + Shader.IsKeywordEnabled("IOSBUILD_IPADAIRPRO"));
 	}
 
 	private void OnPreRender() 
@@ -138,10 +133,8 @@ public class CustomVideoBackground : MonoBehaviour
 		m.SetFloat("_AspectRatio", Camera.main.aspect);
 		m.SetFloat("_Vuforia_Aspect", RenderTarget.transform.localScale.x/RenderTarget.transform.localScale.z);
 
-		m_noiseDelayCounter %= NOISE_DELAY_FRAMES;
-
-		if (DEBUG_OBJECT_TEXTURE) {
-			Vector2 scale = new Vector2 (1.0f, 1.0f);
+		Vector2 scale = new Vector2 (m_deviceScales[m_currentTargetDevice, 0], m_deviceScales[m_currentTargetDevice, 1]);
+		if (DEBUG_OBJECT_TEX) {
 #if UNITY_EDITOR
 			scale.x += Input.mousePosition.x / Screen.width;
 			scale.y += Input.mousePosition.y / Screen.height;
@@ -151,10 +144,12 @@ public class CustomVideoBackground : MonoBehaviour
 				scale.y += Input.GetTouch(0).position.y / Screen.height;
 			}
 #endif
-			m.SetVector ("_DEBUG_TEX_SCALE", scale);
-			string debugText = "MAGIC NUMBERS; X:" + scale.x + ", Y:" + scale.y;
-			GameObject.FindGameObjectWithTag("DebugText").GetComponent<UnityEngine.UI.Text>().text = debugText;
-			Debug.Log (debugText);
 		}
+		m.SetVector ("_TEX_SCALE", scale);
+		string debugText = "MAGIC NUMBERS; X:" + scale.x + ", Y:" + scale.y;
+		GameObject.FindGameObjectWithTag("DebugText").GetComponent<UnityEngine.UI.Text>().text = debugText;
+		Debug.Log (debugText);
+
+		m_noiseDelayCounter %= NOISE_DELAY_FRAMES;
 	}
 }
