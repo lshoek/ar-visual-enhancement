@@ -19,6 +19,7 @@ public class RenderObjectTexture : MonoBehaviour
 	[SerializeField][Range(1, 25)] int BLUR_SAMPLES = 11;
 	[SerializeField][Range(0.25f, 5.0f)] float BLUR_RANGE = 1.0f;
 	[SerializeField][Range(-10.0f, 10.0f)] float BLUR_OFFSET = -0.5f;
+	[SerializeField][Range(0f, 2.0f)] float BLUR_MUL_ALPHA = 1.0f;
 
 	[SerializeField] private Shader MotionBlurShader;
 	[SerializeField] private Shader GaussianBlurShader;
@@ -36,20 +37,20 @@ public class RenderObjectTexture : MonoBehaviour
 	private Vector3 m_prevBlurPos = new Vector3(0, 1.0f, 0);
 	private Vector3 m_blurVec;
 	
-	private int m_camResWidth = 0;
-	private int m_camResHeight = 0;
+	public static int CamResWidth { get; private set; }
+    public static int CamResHeight { get; private set; }
 
 	private bool m_vuforiaStarted = false;
 
 	private void Start () 
 	{
 		/** Set up some default textures until the camera resolution is determined **/
-		m_camResWidth = DEFAULT_TEX_SIZE;
-		m_camResHeight = DEFAULT_TEX_SIZE;
+        CamResWidth = DEFAULT_TEX_SIZE;
+        CamResHeight = DEFAULT_TEX_SIZE;
 
-		ObjectTexture = new RenderTexture (m_camResWidth, m_camResHeight, 0, RenderTextureFormat.ARGB32);
-		m_tempTexture = new RenderTexture (m_camResWidth, m_camResHeight, 0, RenderTextureFormat.ARGB32);
-		GetComponent<Camera> ().targetTexture = new RenderTexture(m_camResWidth, m_camResHeight, 0, RenderTextureFormat.ARGB32);
+        ObjectTexture = new RenderTexture(CamResWidth, CamResHeight, 0, RenderTextureFormat.ARGB32);
+        m_tempTexture = new RenderTexture(CamResWidth, CamResHeight, 0, RenderTextureFormat.ARGB32);
+        GetComponent<Camera>().targetTexture = new RenderTexture(CamResWidth, CamResHeight, 0, RenderTextureFormat.ARGB32);
 		GetComponent<Camera> ().targetTexture.depth = 24;
 
 		MotionBlurMat = new Material (MotionBlurShader);
@@ -73,10 +74,11 @@ public class RenderObjectTexture : MonoBehaviour
 		MotionBlurMat.SetFloat ("_BLUR_SAMPLES", BLUR_SAMPLES);
 		MotionBlurMat.SetFloat ("_BLUR_RANGE", BLUR_RANGE);
 		MotionBlurMat.SetFloat ("_BLUR_OFFSET", BLUR_OFFSET);
+		MotionBlurMat.SetFloat ("_BLUR_MUL_ALPHA", BLUR_MUL_ALPHA);
 		MotionBlurMat.SetVector ("_MotionBlurVec", m_blurVec);
 		MotionBlurMat.SetFloat ("_MotionBlurVecLength", m_blurVec.magnitude);
-		GaussianBlurMat.SetFloat ("_CamRes_Width", m_camResWidth);
-		GaussianBlurMat.SetFloat ("_CamRes_Height", m_camResHeight);
+        GaussianBlurMat.SetFloat("_CamRes_Width", CamResWidth);
+        GaussianBlurMat.SetFloat("_CamRes_Height", CamResHeight);
 		GaussianBlurMat.SetFloat ("_MotionBlurVecLength", m_blurVec.magnitude);
 
 		/** Rendering commands **/
@@ -88,7 +90,7 @@ public class RenderObjectTexture : MonoBehaviour
 			Graphics.Blit (GetComponent<Camera>().targetTexture, ObjectTexture, MotionBlurMat);
 			break;
 		case EFFECTS_CONFIG.GAUSSIAN_BLUR3X3:
-			Graphics.Blit (GetComponent<Camera>().targetTexture, ObjectTexture, MotionBlurMat);
+			Graphics.Blit (GetComponent<Camera>().targetTexture, ObjectTexture, GaussianBlurMat);
 			break;
 		case EFFECTS_CONFIG.FULL:
 			Graphics.Blit (GetComponent<Camera>().targetTexture, m_tempTexture, MotionBlurMat);
@@ -100,19 +102,25 @@ public class RenderObjectTexture : MonoBehaviour
 	private void CheckVuforiaInitStatus()
 	{
 		try {
-			m_camResWidth = VuforiaRenderer.Instance.GetVideoTextureInfo().imageSize.x;
-			m_camResHeight = VuforiaRenderer.Instance.GetVideoTextureInfo().imageSize.y;
+            CamResWidth = VuforiaRenderer.Instance.GetVideoTextureInfo().imageSize.x;
+            CamResHeight = VuforiaRenderer.Instance.GetVideoTextureInfo().imageSize.y;
 		} catch (System.NullReferenceException) {}
 
-		if (m_camResWidth == 0)
-			return;
+        if (CamResWidth == 0 || CamResWidth == null) 
+            return;
 
-		ObjectTexture = new RenderTexture (m_camResWidth, m_camResHeight, 0, RenderTextureFormat.ARGB32);
-		m_tempTexture = new RenderTexture (m_camResWidth, m_camResHeight, 0, RenderTextureFormat.ARGB32);
-		GetComponent<Camera> ().targetTexture = new RenderTexture(m_camResWidth, m_camResHeight, 0, RenderTextureFormat.ARGB32);
+        if (CamResWidth > Screen.width)
+        {
+            CamResWidth = Screen.width;
+            CamResHeight = Screen.height;
+        }
+
+        ObjectTexture = new RenderTexture(CamResWidth, CamResHeight, 0, RenderTextureFormat.ARGB32);
+        m_tempTexture = new RenderTexture(CamResWidth, CamResHeight, 0, RenderTextureFormat.ARGB32);
+        GetComponent<Camera>().targetTexture = new RenderTexture(CamResWidth, CamResHeight, 0, RenderTextureFormat.ARGB32);
 		GetComponent<Camera> ().targetTexture.depth = 24;
 
-		Debug.Log ("Vuforia data; w:" + m_camResWidth + " x " + m_camResHeight);
+        Debug.Log("Vuforia data; w:" + CamResWidth + " x " + CamResHeight);
 		m_vuforiaStarted = true;
 	}
 

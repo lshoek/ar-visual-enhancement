@@ -1,4 +1,4 @@
-﻿Shader "Custom/CustomVideoBackground" 
+﻿Shader "Custom/CustomVideoBackground_Old" 
 {
     Properties
     {
@@ -12,7 +12,8 @@
         [HideInInspector] _NoiseTexSize ("NoiseTextureSize", Float) = 64.0
         [HideInInspector] _ScreenRes_Width ("ScreenResWidth", Float) = 640.0
         [HideInInspector] _ScreenRes_Height ("ScreenResHeight", Float) = 480.0
-        [HideInInspector] _Screen_Aspect ("ScreenAspect", Float) = 1.0
+        [HideInInspector] _Camera_Aspect ("AspectRatio", Float) = 1.0
+        [HideInInspector] _Video_Aspect ("VuforiaAspect", Float) = 1.0
 
         [HideInInspector] _TEX_SCALE ("Tex Scale", Vector) = (1.0, 1.0, 1.0, 1.0)
         [HideInInspector] _ENABLE_NOISE ("Enable Noise", Float) = 1.0
@@ -36,8 +37,8 @@
 			#pragma fragment FRAG
 			#include "UnityCG.cginc"
 
-			#define W _VideoRes_Width
-			#define H _VideoRes_Height
+			#define W _ScreenRes_Width
+			#define H _ScreenRes_Height
 			#define inv(i) (1.0 - i)
 
 			uniform sampler2D _MainTex;	
@@ -51,11 +52,12 @@
 
 			uniform float _ScreenRes_Width;
 			uniform float _ScreenRes_Height;
+
 			uniform float _VideoRes_Width;
 			uniform float _VideoRes_Height;
 
-			uniform float _Screen_Aspect;
 			uniform float _Video_Aspect;
+			uniform float _Camera_Aspect;
 
 			// Debug
 			uniform float4 _TEX_SCALE;
@@ -73,6 +75,13 @@
 				half2 uv2 : TEXCOORD2;
 			};
 
+			half2 aspectfix(half2 uv) 
+			{
+				float aspect = _Camera_Aspect/_Video_Aspect;
+				float shift = lerp(0, 1.0/aspect, (1.0 - aspect) * 0.5);
+				return half2(lerp(0, 1.0/aspect, uv.x) - shift, inv(uv.y));
+			}
+
 			v2f VERT(appdata_img v)
 			{
 				v2f o;
@@ -83,13 +92,13 @@
 				o.uv2.y *= _TEX_SCALE.y;
 
 				_NoiseTex_ST = half4(
-					(W*_Screen_Aspect/_NoiseTexSize)/_TEXEL_MAGNIFICATION, 
+					(W*_Camera_Aspect/_NoiseTexSize)/_TEXEL_MAGNIFICATION, 
 					(H/_NoiseTexSize)/_TEXEL_MAGNIFICATION,
 					_NoiseTexOffset0, _NoiseTexOffset1);
 
 				o.uv0 = v.texcoord;
 				o.uv1 = TRANSFORM_TEX(v.texcoord, _NoiseTex);
-				o.uv2 = half2(o.uv2.x, inv(o.uv2.y));
+				o.uv2 = aspectfix(o.uv2);
 				return o;
 			}
 

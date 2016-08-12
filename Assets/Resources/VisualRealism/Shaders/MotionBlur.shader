@@ -8,6 +8,7 @@
         [HideInInspector] _BLUR_SAMPLES ("BLUR SAMPLES", Range(1.0, 25.0)) = 11.0
         [HideInInspector] _BLUR_RANGE ("BLUR RANGE", Range(0.25, 5.0)) = 1.0
         [HideInInspector] _BLUR_OFFSET ("BLUR OFFSET", Range(-10.0, 10.0)) = -0.5
+        [HideInInspector] _BLUR_MUL_ALPHA ("BLUR MUL ALPHA", Range(0, 2.0)) = 2.0
     }
     
     SubShader 
@@ -27,6 +28,7 @@
 			uniform half _BLUR_SAMPLES;
 			uniform half _BLUR_RANGE;
 			uniform half _BLUR_OFFSET;
+			uniform half _BLUR_MUL_ALPHA;
 
 			struct v2f
 			{
@@ -62,6 +64,7 @@
 				/** Perform divisions to compute the display color **/
 				col.rgb /= col.a;
 				col.a /= _BLUR_SAMPLES;
+				col.a = clamp(col.a *_BLUR_MUL_ALPHA, 0, 1.0);
 
 				return col;
 			}
