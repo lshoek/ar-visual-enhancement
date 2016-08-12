@@ -28,6 +28,22 @@
 		created web cam texture. This can be used to fixe cases where the webcam textue is distorted.
 		Please note that in Unity 4.5 on Mac, different web cam models that deliver different aspect ratios 
 		identify themselves with the same name (e.g. Logitech C910 and C920 are both just 'Logitech Camera') -->
+	<webcam deviceName="USB Camera">
+        <windows>
+            <!-- size of the web cam texture requested from Unity -->
+            <requestedTextureWidth>640</requestedTextureWidth>
+            <requestedTextureHeight>480</requestedTextureHeight>
+            <!-- size of the texture Unity's web cam texture will be rescaled to -->
+            <resampledTextureWidth>640</resampledTextureWidth>
+        </windows>
+        <osx>
+            <!-- size of the web cam texture requested from Unity -->
+            <requestedTextureWidth>640</requestedTextureWidth>
+            <requestedTextureHeight>480</requestedTextureHeight>
+            <!-- size of the texture Unity's web cam texture will be rescaled to -->
+            <resampledTextureWidth>640</resampledTextureWidth>
+        </osx>
+    </webcam>
     <webcam deviceName="HP Webcam-101">
         <windows>
             <!-- size of the web cam texture requested from Unity -->

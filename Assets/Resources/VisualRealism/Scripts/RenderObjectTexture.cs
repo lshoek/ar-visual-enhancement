@@ -120,6 +120,10 @@ public class RenderObjectTexture : MonoBehaviour
         GetComponent<Camera>().targetTexture = new RenderTexture(CamResWidth, CamResHeight, 0, RenderTextureFormat.ARGB32);
 		GetComponent<Camera> ().targetTexture.depth = 24;
 
+#if UNITY_EDITOR
+        GetComponent<Camera>().targetTexture.antiAliasing = 4;
+#endif
+
         Debug.Log("Vuforia data; w:" + CamResWidth + " x " + CamResHeight);
 		m_vuforiaStarted = true;
 	}
